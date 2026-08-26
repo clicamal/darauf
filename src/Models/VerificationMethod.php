@@ -30,6 +30,6 @@ class VerificationMethod extends Model
      */
     public function didDocument(): BelongsTo
     {
-        return $this->belongsTo(DidDocument::class, 'controller');
+        return $this->belongsTo(DidDocument::class, 'controller', 'did');
     }
 }

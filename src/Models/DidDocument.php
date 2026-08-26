@@ -29,6 +29,6 @@ class DidDocument extends Model
      */
     public function verificationMethods(): HasMany
     {
-        return $this->hasMany(VerificationMethod::class);
+        return $this->hasMany(VerificationMethod::class, 'controller', 'did');
     }
 }

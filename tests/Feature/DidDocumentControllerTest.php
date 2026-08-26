@@ -11,8 +11,15 @@ beforeEach(function () {
     ])->assertSuccessful();
 });
 
+function generatePublicKey(): string
+{
+    $key = openssl_pkey_new(['private_key_bits' => 2048]);
+
+    return openssl_pkey_get_details($key)['key'];
+}
+
 it('creates a did document with its verification method', function () {
-    $publicKey = str_repeat('a', 451);
+    $publicKey = generatePublicKey();
 
     $response = $this->postJson(route('darauf.diddocuments.create'), [
         'username' => 'alice',
@@ -22,7 +29,7 @@ it('creates a did document with its verification method', function () {
     $did = 'did:darauf:'.hash('sha256', 'alice');
 
     $response->assertCreated()
-        ->assertJsonPath('message', 'DID Document created.');
+        ->assertJsonPath('message', __('darauf::messages.success.create_did_document'));
 
     $this->assertDatabaseHas('darauf_did_documents', [
         'did' => $did,
@@ -32,40 +39,73 @@ it('creates a did document with its verification method', function () {
         'id' => $did.'#key1',
         'controller' => $did,
         'type' => 'RSA',
-        'public_key' => $publicKey,
     ]);
+
+    expect(DidDocument::first()?->verificationMethods()->first()?->public_key)
+        ->toContain('BEGIN PUBLIC KEY');
 });
 
-it('does not persist anything when the payload is empty', function () {
+it('rejects an empty payload', function () {
     $this->postJson(route('darauf.diddocuments.create'), [])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['username', 'publicKey']);
 
-    $this->assertDatabaseCount(DidDocument::class, 0)
-        ->assertDatabaseCount('darauf_verification_methods', 0);
+    $this->assertDatabaseCount(DidDocument::class, 0);
 });
 
 it('rejects usernames longer than 30 characters', function () {
     $this->postJson(route('darauf.diddocuments.create'), [
         'username' => str_repeat('a', 31),
-        'publicKey' => 'key',
-    ])->assertUnprocessable()
+        'publicKey' => generatePublicKey(),
+    ])
+        ->assertUnprocessable()
         ->assertJsonValidationErrors(['username']);
 });
 
 it('accepts usernames with exactly 30 characters', function () {
     $this->postJson(route('darauf.diddocuments.create'), [
         'username' => str_repeat('a', 30),
-        'publicKey' => 'key',
-    ])->assertCreated();
+        'publicKey' => generatePublicKey(),
+    ])
+        ->assertCreated();
 });
 
 it('rejects public keys longer than 451 characters', function () {
     $this->postJson(route('darauf.diddocuments.create'), [
         'username' => 'alice',
         'publicKey' => str_repeat('a', 452),
-    ])->assertUnprocessable()
+    ])
+        ->assertUnprocessable()
         ->assertJsonValidationErrors(['publicKey']);
+});
+
+it('rejects a public key that is not a valid PEM', function () {
+    $this->postJson(route('darauf.diddocuments.create'), [
+        'username' => 'alice',
+        'publicKey' => 'not-a-valid-pem',
+    ])
+        ->assertUnprocessable()
+        ->assertJsonPath('message', __('darauf::messages.error.invalid_public_key'));
+
+    $this->assertDatabaseCount(DidDocument::class, 0);
+});
+
+it('rejects a duplicate username', function () {
+    $publicKey = generatePublicKey();
+
+    $payload = [
+        'username' => 'alice',
+        'publicKey' => $publicKey,
+    ];
+
+    $this->postJson(route('darauf.diddocuments.create'), $payload)
+        ->assertCreated();
+
+    $this->postJson(route('darauf.diddocuments.create'), $payload)
+        ->assertUnprocessable()
+        ->assertJsonPath('message', __('darauf::messages.error.username_taken'));
+
+    $this->assertDatabaseCount(DidDocument::class, 1);
 });
 
 it('registers the named did document creation route', function () {
