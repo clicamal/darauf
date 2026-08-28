@@ -9,9 +9,6 @@ use Clicamal\Darauf\Models\VerificationMethod;
 use Illuminate\Database\Eloquent\Factories\Attributes\UseModel;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/**
- * @extends Factory<VerificationMethod>
- */
 #[UseModel(VerificationMethod::class)]
 class VerificationMethodFactory extends Factory
 {

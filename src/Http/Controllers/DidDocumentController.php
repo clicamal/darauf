@@ -31,15 +31,15 @@ class DidDocumentController extends Controller
 
             $did = DidGenerator::generate($data['username']);
 
-            if (DidDocument::query()->where('did', $did)->exists()) {
+            if (DidDocument::where('did', $did)->exists()) {
                 throw new UsernameTakenException();
             }
 
-            $didDocument = DidDocument::query()->create([
+            $didDocument = DidDocument::create([
                 'did' => $did,
             ]);
 
-            $verificationMethod = VerificationMethod::query()->create([
+            $verificationMethod = VerificationMethod::create([
                 'id' => $did . '#key1',
                 'controller' => $did,
                 'type' => 'RSA',

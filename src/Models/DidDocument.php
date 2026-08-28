@@ -13,9 +13,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[UseFactory(DidDocumentFactory::class)]
 class DidDocument extends Model
 {
-    /**
-     * @use HasFactory<DidDocumentFactory>
-     */
     use HasFactory;
 
     protected $table = 'darauf_did_documents';
@@ -24,9 +21,6 @@ class DidDocument extends Model
         'did',
     ];
 
-    /**
-     * @return HasMany<VerificationMethod, $this>
-     */
     public function verificationMethods(): HasMany
     {
         return $this->hasMany(VerificationMethod::class, 'controller', 'did');

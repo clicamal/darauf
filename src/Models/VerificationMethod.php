@@ -25,9 +25,6 @@ class VerificationMethod extends Model
         'public_key',
     ];
 
-    /**
-     * @return BelongsTo<DidDocument, $this>
-     */
     public function didDocument(): BelongsTo
     {
         return $this->belongsTo(DidDocument::class, 'controller', 'did');
