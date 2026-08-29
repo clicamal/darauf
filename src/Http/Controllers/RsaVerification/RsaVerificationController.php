@@ -6,6 +6,7 @@ namespace Clicamal\Darauf\Http\Controllers\RsaVerification;
 
 use Clicamal\Darauf\Exceptions\DaraufException;
 use Clicamal\Darauf\Exceptions\DidDocumentNotFound;
+use Clicamal\Darauf\Exceptions\RsaVerificationFailedException;
 use Clicamal\Darauf\Exceptions\RsaVerificationMethodNotFound;
 use Clicamal\Darauf\Models\DidDocument;
 use Clicamal\Darauf\Services\DidGenerator;
@@ -46,6 +47,30 @@ class RsaVerificationController extends Controller
             return response()->json([
                 'message' => $exception->getMessage(),
             ], 422);
+        }
+    }
+
+    public function verify(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'challengeId' => 'required|string|max:100',
+            'signature' => 'required|string|max:512',
+        ]);
+
+        try {
+            $signature = base64_decode($data['signature'], true);
+
+            if (! $signature || ! Challenge::verify($data['challengeId'], $signature)) {
+                throw new RsaVerificationFailedException;
+            }
+
+            return response()->json([
+                'message' => __('darauf::messages.success.did_subject_authenticated'),
+            ]);
+        } catch (DaraufException $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+            ], 401);
         }
     }
 }

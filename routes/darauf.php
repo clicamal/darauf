@@ -13,4 +13,5 @@ Route::prefix('api/darauf/v1')
     ->group(function () {
         Route::post('diddocuments', [DidDocumentController::class, 'create'])->name('darauf.diddocuments.create');
         Route::post('challenge', [RsaVerificationController::class, 'generateChallenge'])->name('darauf.challenge.generate');
+        Route::post('verify', [RsaVerificationController::class, 'verify'])->name('darauf.challenge.verify');
     });

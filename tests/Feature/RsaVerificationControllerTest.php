@@ -103,3 +103,65 @@ it('registers the named challenge route', function () {
     expect(route('darauf.challenge.generate'))
         ->toBe('http://localhost/api/darauf/v1/challenge');
 });
+
+it('accepts a valid signature in the verify endpoint', function () {
+    $key = openssl_pkey_new(['private_key_bits' => 2048]);
+    $publicKey = openssl_pkey_get_details($key)['key'];
+
+    createDidWithRsaMethod('alice', $publicKey);
+
+    $challengeResponse = $this->postJson(route('darauf.challenge.generate'), [
+        'username' => 'alice',
+    ])->assertCreated();
+
+    $challenge = $challengeResponse->json('challenge');
+
+    openssl_sign($challenge['challengeString'], $signature, $key);
+
+    $this->postJson(route('darauf.challenge.verify'), [
+        'challengeId' => $challenge['challengeId'],
+        'signature' => base64_encode($signature),
+    ])->assertOk();
+});
+
+it('rejects an invalid signature in the verify endpoint', function () {
+    $key = openssl_pkey_new(['private_key_bits' => 2048]);
+    $publicKey = openssl_pkey_get_details($key)['key'];
+
+    createDidWithRsaMethod('alice', $publicKey);
+
+    $challengeResponse = $this->postJson(route('darauf.challenge.generate'), [
+        'username' => 'alice',
+    ])->assertCreated();
+
+    $challenge = $challengeResponse->json('challenge');
+
+    openssl_sign('not-the-challenge', $signature, $key);
+
+    $this->postJson(route('darauf.challenge.verify'), [
+        'challengeId' => $challenge['challengeId'],
+        'signature' => base64_encode($signature),
+    ])
+        ->assertUnauthorized()
+        ->assertJsonPath('message', __('darauf::messages.error.rsa_verification_failed'));
+});
+
+it('rejects a challenge that was never generated', function () {
+    $this->postJson(route('darauf.challenge.verify'), [
+        'challengeId' => 'missing-challenge-id',
+        'signature' => 'c2lnbmF0dXJl',
+    ])
+        ->assertUnauthorized()
+        ->assertJsonPath('message', __('darauf::messages.error.challenge_not_found'));
+});
+
+it('rejects a missing payload in the verify endpoint', function () {
+    $this->postJson(route('darauf.challenge.verify'), [])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['challengeId', 'signature']);
+});
+
+it('registers the named verify route', function () {
+    expect(route('darauf.challenge.verify'))
+        ->toBe('http://localhost/api/darauf/v1/verify');
+});
