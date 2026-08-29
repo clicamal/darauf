@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Clicamal\Darauf\Exceptions\ChallengeNotFoundException;
+use Clicamal\Darauf\Exceptions\RsaVerification\ChallengeNotFoundException;
 use Clicamal\Darauf\Services\RsaVerification\Challenge;
 
 it('generates a challenge with an id and a string', function () {

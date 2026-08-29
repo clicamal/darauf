@@ -7,7 +7,7 @@ use Clicamal\Darauf\Models\VerificationMethod;
 
 beforeEach(function () {
     $this->artisan('migrate', [
-        '--path' => realpath(__DIR__.'/../../database/migrations'),
+        '--path' => realpath(__DIR__.'/../../../database/migrations'),
         '--realpath' => true,
     ])->assertSuccessful();
 });

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Clicamal\Darauf\Services\RsaVerification;
 
 use Cache;
-use Clicamal\Darauf\Exceptions\ChallengeNotFoundException;
+use Clicamal\Darauf\Exceptions\RsaVerification\ChallengeNotFoundException;
 use Str;
 
 class Challenge

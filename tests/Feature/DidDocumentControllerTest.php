@@ -85,7 +85,7 @@ it('rejects a public key that is not a valid PEM', function () {
         'publicKey' => 'not-a-valid-pem',
     ])
         ->assertUnprocessable()
-        ->assertJsonPath('message', __('darauf::messages.error.invalid_public_key'));
+        ->assertJsonPath('message', __('darauf::messages.error.rsa_verification.invalid_public_key'));
 
     $this->assertDatabaseCount(DidDocument::class, 0);
 });

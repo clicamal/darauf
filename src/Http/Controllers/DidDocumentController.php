@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Clicamal\Darauf\Http\Controllers;
 
 use Clicamal\Darauf\Exceptions\DaraufException;
-use Clicamal\Darauf\Exceptions\InvalidPublicKeyException;
+use Clicamal\Darauf\Exceptions\RsaVerification\InvalidPublicKeyException;
 use Clicamal\Darauf\Exceptions\UsernameTakenException;
 use Clicamal\Darauf\Models\DidDocument;
 use Clicamal\Darauf\Models\VerificationMethod;

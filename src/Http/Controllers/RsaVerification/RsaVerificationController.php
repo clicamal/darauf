@@ -6,8 +6,8 @@ namespace Clicamal\Darauf\Http\Controllers\RsaVerification;
 
 use Clicamal\Darauf\Exceptions\DaraufException;
 use Clicamal\Darauf\Exceptions\DidDocumentNotFound;
-use Clicamal\Darauf\Exceptions\RsaVerificationFailedException;
-use Clicamal\Darauf\Exceptions\RsaVerificationMethodNotFound;
+use Clicamal\Darauf\Exceptions\RsaVerification\RsaVerificationFailedException;
+use Clicamal\Darauf\Exceptions\RsaVerification\RsaVerificationMethodNotFound;
 use Clicamal\Darauf\Models\DidDocument;
 use Clicamal\Darauf\Services\DidGenerator;
 use Clicamal\Darauf\Services\RsaVerification\Challenge;

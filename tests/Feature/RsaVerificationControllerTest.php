@@ -37,7 +37,7 @@ it('returns a challenge for an existing did with an rsa method', function () {
 
     createDidWithRsaMethod('alice', $publicKey);
 
-    $response = $this->postJson(route('darauf.challenge.generate'), [
+    $response = $this->postJson(route('darauf.verification.rsa.challenge.generate'), [
         'username' => 'alice',
     ]);
 
@@ -56,7 +56,7 @@ it('verifies a signature against the generated challenge', function () {
 
     createDidWithRsaMethod('alice', $publicKey);
 
-    $response = $this->postJson(route('darauf.challenge.generate'), [
+    $response = $this->postJson(route('darauf.verification.rsa.challenge.generate'), [
         'username' => 'alice',
     ]);
 
@@ -68,7 +68,7 @@ it('verifies a signature against the generated challenge', function () {
 });
 
 it('rejects a username without a did document', function () {
-    $this->postJson(route('darauf.challenge.generate'), [
+    $this->postJson(route('darauf.verification.rsa.challenge.generate'), [
         'username' => 'unknown',
     ])
         ->assertUnprocessable()
@@ -78,21 +78,21 @@ it('rejects a username without a did document', function () {
 it('rejects a did without an rsa verification method', function () {
     DidDocument::create(['did' => 'did:darauf:'.hash('sha256', 'alice')]);
 
-    $this->postJson(route('darauf.challenge.generate'), [
+    $this->postJson(route('darauf.verification.rsa.challenge.generate'), [
         'username' => 'alice',
     ])
         ->assertUnprocessable()
-        ->assertJsonPath('message', __('darauf::messages.error.rsa_verification_method_not_found'));
+        ->assertJsonPath('message', __('darauf::messages.error.rsa_verification.rsa_verification_method_not_found'));
 });
 
 it('rejects a missing username', function () {
-    $this->postJson(route('darauf.challenge.generate'), [])
+    $this->postJson(route('darauf.verification.rsa.challenge.generate'), [])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['username']);
 });
 
 it('rejects usernames longer than 30 characters', function () {
-    $this->postJson(route('darauf.challenge.generate'), [
+    $this->postJson(route('darauf.verification.rsa.challenge.generate'), [
         'username' => str_repeat('a', 31),
     ])
         ->assertUnprocessable()
@@ -100,8 +100,8 @@ it('rejects usernames longer than 30 characters', function () {
 });
 
 it('registers the named challenge route', function () {
-    expect(route('darauf.challenge.generate'))
-        ->toBe('http://localhost/api/darauf/v1/challenge');
+    expect(route('darauf.verification.rsa.challenge.generate'))
+        ->toBe('http://localhost/api/darauf/v1/verification/rsa/challenge');
 });
 
 it('accepts a valid signature in the verify endpoint', function () {
@@ -110,7 +110,7 @@ it('accepts a valid signature in the verify endpoint', function () {
 
     createDidWithRsaMethod('alice', $publicKey);
 
-    $challengeResponse = $this->postJson(route('darauf.challenge.generate'), [
+    $challengeResponse = $this->postJson(route('darauf.verification.rsa.challenge.generate'), [
         'username' => 'alice',
     ])->assertCreated();
 
@@ -118,7 +118,7 @@ it('accepts a valid signature in the verify endpoint', function () {
 
     openssl_sign($challenge['challengeString'], $signature, $key);
 
-    $this->postJson(route('darauf.challenge.verify'), [
+    $this->postJson(route('darauf.verification.rsa.challenge.verify'), [
         'challengeId' => $challenge['challengeId'],
         'signature' => base64_encode($signature),
     ])->assertOk();
@@ -130,7 +130,7 @@ it('rejects an invalid signature in the verify endpoint', function () {
 
     createDidWithRsaMethod('alice', $publicKey);
 
-    $challengeResponse = $this->postJson(route('darauf.challenge.generate'), [
+    $challengeResponse = $this->postJson(route('darauf.verification.rsa.challenge.generate'), [
         'username' => 'alice',
     ])->assertCreated();
 
@@ -138,30 +138,30 @@ it('rejects an invalid signature in the verify endpoint', function () {
 
     openssl_sign('not-the-challenge', $signature, $key);
 
-    $this->postJson(route('darauf.challenge.verify'), [
+    $this->postJson(route('darauf.verification.rsa.challenge.verify'), [
         'challengeId' => $challenge['challengeId'],
         'signature' => base64_encode($signature),
     ])
         ->assertUnauthorized()
-        ->assertJsonPath('message', __('darauf::messages.error.rsa_verification_failed'));
+        ->assertJsonPath('message', __('darauf::messages.error.rsa_verification.rsa_verification_failed'));
 });
 
 it('rejects a challenge that was never generated', function () {
-    $this->postJson(route('darauf.challenge.verify'), [
+    $this->postJson(route('darauf.verification.rsa.challenge.verify'), [
         'challengeId' => 'missing-challenge-id',
         'signature' => 'c2lnbmF0dXJl',
     ])
         ->assertUnauthorized()
-        ->assertJsonPath('message', __('darauf::messages.error.challenge_not_found'));
+        ->assertJsonPath('message', __('darauf::messages.error.rsa_verification.challenge_not_found'));
 });
 
 it('rejects a missing payload in the verify endpoint', function () {
-    $this->postJson(route('darauf.challenge.verify'), [])
+    $this->postJson(route('darauf.verification.rsa.challenge.verify'), [])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['challengeId', 'signature']);
 });
 
 it('registers the named verify route', function () {
-    expect(route('darauf.challenge.verify'))
-        ->toBe('http://localhost/api/darauf/v1/verify');
+    expect(route('darauf.verification.rsa.challenge.verify'))
+        ->toBe('http://localhost/api/darauf/v1/verification/rsa/verify');
 });
