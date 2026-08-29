@@ -10,7 +10,7 @@ class Did
 {
     public const string DID_PATTERN = '/^did:[a-z]+:[a-zA-Z0-9._:%-]*[a-zA-Z0-9._-]$/';
 
-    public static function generate(string $username): string
+    public static function generateSha256FromUsername(string $username): string
     {
         $usernameHash = hash('sha256', $username);
 

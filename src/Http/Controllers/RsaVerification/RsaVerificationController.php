@@ -10,7 +10,7 @@ use Clicamal\Darauf\Exceptions\RsaVerification\RsaVerificationFailedException;
 use Clicamal\Darauf\Exceptions\RsaVerification\RsaVerificationMethodNotFoundException;
 use Clicamal\Darauf\Models\DidDocument;
 use Clicamal\Darauf\Services\Did;
-use Clicamal\Darauf\Services\RsaVerification\Challenge;
+use Clicamal\Darauf\Services\RsaVerification\RsaChallenge;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -24,7 +24,7 @@ class RsaVerificationController extends Controller
         ]);
 
         try {
-            $did = Did::generate($data['username']);
+            $did = Did::generateSha256FromUsername($data['username']);
 
             $didDocument = DidDocument::where('did', $did)->first();
 
@@ -38,7 +38,7 @@ class RsaVerificationController extends Controller
                 throw new RsaVerificationMethodNotFoundException;
             }
 
-            $challenge = Challenge::generate($verificationMethod->public_key);
+            $challenge = RsaChallenge::generate($verificationMethod->public_key);
 
             return response()->json([
                 'challenge' => $challenge,
@@ -60,7 +60,7 @@ class RsaVerificationController extends Controller
         try {
             $signature = base64_decode($data['signature'], true);
 
-            if (! $signature || ! Challenge::verify($data['challengeId'], $signature)) {
+            if (! $signature || ! RsaChallenge::verify($data['challengeId'], $signature)) {
                 throw new RsaVerificationFailedException;
             }
 

@@ -5,18 +5,18 @@ declare(strict_types=1);
 use Clicamal\Darauf\Services\Did;
 
 it('generates a did in the correct format', function () {
-    $did = Did::generate('alice');
+    $did = Did::generateSha256FromUsername('alice');
 
     expect($did)->toStartWith('did:darauf:')
         ->and($did)->toBe('did:darauf:'.hash('sha256', 'alice'));
 });
 
 it('generates the same did for the same username', function () {
-    expect(Did::generate('alice'))->toBe(Did::generate('alice'));
+    expect(Did::generateSha256FromUsername('alice'))->toBe(Did::generateSha256FromUsername('alice'));
 });
 
 it('generates different dids for different usernames', function () {
-    expect(Did::generate('alice'))->not->toBe(Did::generate('bob'));
+    expect(Did::generateSha256FromUsername('alice'))->not->toBe(Did::generateSha256FromUsername('bob'));
 });
 
 it('validates a correct did', function () {

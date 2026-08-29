@@ -8,7 +8,7 @@ use Cache;
 use Clicamal\Darauf\Exceptions\RsaVerification\ChallengeNotFoundException;
 use Str;
 
-class Challenge
+class RsaChallenge
 {
     public static function generate(string $publicKey): array
     {

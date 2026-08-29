@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Clicamal\Darauf\Models\DidDocument;
 use Clicamal\Darauf\Models\VerificationMethod;
 use Clicamal\Darauf\Services\Did;
-use Clicamal\Darauf\Services\RsaVerification\Challenge;
+use Clicamal\Darauf\Services\RsaVerification\RsaChallenge;
 use Illuminate\Support\Facades\Cache;
 
 beforeEach(function () {
@@ -17,7 +17,7 @@ beforeEach(function () {
 
 function createDidWithRsaMethod(string $username, string $publicKey): string
 {
-    $did = Did::generate($username);
+    $did = Did::generateSha256FromUsername($username);
 
     DidDocument::create(['did' => $did]);
 
@@ -64,7 +64,7 @@ it('verifies a signature against the generated challenge', function () {
 
     openssl_sign($challenge['challengeString'], $signature, $key);
 
-    expect(Challenge::verify($challenge['challengeId'], $signature))->toBe(1);
+    expect(RsaChallenge::verify($challenge['challengeId'], $signature))->toBe(1);
 });
 
 it('rejects a username without a did document', function () {
