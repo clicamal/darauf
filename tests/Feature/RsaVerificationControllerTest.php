@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use Clicamal\Darauf\Models\DidDocument;
 use Clicamal\Darauf\Models\VerificationMethod;
-use Clicamal\Darauf\Services\DidGenerator;
+use Clicamal\Darauf\Services\Did;
 use Clicamal\Darauf\Services\RsaVerification\Challenge;
 use Illuminate\Support\Facades\Cache;
 
@@ -17,7 +17,7 @@ beforeEach(function () {
 
 function createDidWithRsaMethod(string $username, string $publicKey): string
 {
-    $did = DidGenerator::generate($username);
+    $did = Did::generate($username);
 
     DidDocument::create(['did' => $did]);
 

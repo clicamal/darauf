@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Clicamal\Darauf\Http\Controllers\RsaVerification;
 
 use Clicamal\Darauf\Exceptions\DaraufException;
-use Clicamal\Darauf\Exceptions\DidDocumentNotFound;
+use Clicamal\Darauf\Exceptions\DidDocumentNotFoundException;
 use Clicamal\Darauf\Exceptions\RsaVerification\RsaVerificationFailedException;
-use Clicamal\Darauf\Exceptions\RsaVerification\RsaVerificationMethodNotFound;
+use Clicamal\Darauf\Exceptions\RsaVerification\RsaVerificationMethodNotFoundException;
 use Clicamal\Darauf\Models\DidDocument;
-use Clicamal\Darauf\Services\DidGenerator;
+use Clicamal\Darauf\Services\Did;
 use Clicamal\Darauf\Services\RsaVerification\Challenge;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,18 +24,18 @@ class RsaVerificationController extends Controller
         ]);
 
         try {
-            $did = DidGenerator::generate($data['username']);
+            $did = Did::generate($data['username']);
 
             $didDocument = DidDocument::where('did', $did)->first();
 
             if (! $didDocument) {
-                throw new DidDocumentNotFound;
+                throw new DidDocumentNotFoundException;
             }
 
             $verificationMethod = $didDocument->verificationMethods()->where('type', 'RSA')->first();
 
             if (! $verificationMethod) {
-                throw new RsaVerificationMethodNotFound;
+                throw new RsaVerificationMethodNotFoundException;
             }
 
             $challenge = Challenge::generate($verificationMethod->public_key);

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Clicamal\Darauf\Exceptions;
 
-class DidDocumentNotFound extends DaraufException
+class DidDocumentNotFoundException extends DaraufException
 {
     public function __construct()
     {

@@ -6,7 +6,7 @@ namespace Clicamal\Darauf\Services;
 
 use Clicamal\Darauf\Exceptions\InvalidDidException;
 
-class DidGenerator
+class Did
 {
     public const string DID_PATTERN = '/^did:[a-z]+:[a-zA-Z0-9._:%-]*[a-zA-Z0-9._-]$/';
 

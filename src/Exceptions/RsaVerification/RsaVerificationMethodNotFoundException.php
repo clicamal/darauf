@@ -6,7 +6,7 @@ namespace Clicamal\Darauf\Exceptions\RsaVerification;
 
 use Clicamal\Darauf\Exceptions\DaraufException;
 
-class RsaVerificationMethodNotFound extends DaraufException
+class RsaVerificationMethodNotFoundException extends DaraufException
 {
     public function __construct()
     {

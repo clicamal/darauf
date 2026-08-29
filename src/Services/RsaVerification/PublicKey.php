@@ -6,7 +6,7 @@ namespace Clicamal\Darauf\Services\RsaVerification;
 
 use OpenSSLAsymmetricKey;
 
-class PublicKeyValidator
+class PublicKey
 {
     public static function validate(string $key): OpenSSLAsymmetricKey|false
     {
