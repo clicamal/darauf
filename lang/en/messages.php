@@ -9,6 +9,8 @@ return [
         'invalid_public_key' => 'Invalid public key.',
         'username_taken' => 'Username already taken.',
         'challenge_not_found' => 'Challenge was not generated or expired.',
+        'did_document_not_found' => 'DID document not found.',
+        'rsa_verification_method_not_found' => 'DID document does not have a RSA verification method.',
         'general_error' => 'Error completing request.',
     ],
     'success' => [

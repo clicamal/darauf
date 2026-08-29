@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Clicamal\Darauf\Services\PublicKeyValidator;
+use Clicamal\Darauf\Services\RsaVerification\PublicKeyValidator;
 
 it('validates a real rsa public key', function () {
     $key = openssl_pkey_new(['private_key_bits' => 2048]);

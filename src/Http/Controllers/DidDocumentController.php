@@ -10,7 +10,7 @@ use Clicamal\Darauf\Exceptions\UsernameTakenException;
 use Clicamal\Darauf\Models\DidDocument;
 use Clicamal\Darauf\Models\VerificationMethod;
 use Clicamal\Darauf\Services\DidGenerator;
-use Clicamal\Darauf\Services\PublicKeyValidator;
+use Clicamal\Darauf\Services\RsaVerification\PublicKeyValidator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -25,14 +25,14 @@ class DidDocumentController extends Controller
         ]);
 
         try {
-            if (!PublicKeyValidator::validate($data['publicKey'])) {
-                throw new InvalidPublicKeyException();
+            if (! PublicKeyValidator::validate($data['publicKey'])) {
+                throw new InvalidPublicKeyException;
             }
 
             $did = DidGenerator::generate($data['username']);
 
             if (DidDocument::where('did', $did)->exists()) {
-                throw new UsernameTakenException();
+                throw new UsernameTakenException;
             }
 
             $didDocument = DidDocument::create([
@@ -40,7 +40,7 @@ class DidDocumentController extends Controller
             ]);
 
             $verificationMethod = VerificationMethod::create([
-                'id' => $did . '#key1',
+                'id' => $did.'#key1',
                 'controller' => $did,
                 'type' => 'RSA',
                 'public_key' => $data['publicKey'],

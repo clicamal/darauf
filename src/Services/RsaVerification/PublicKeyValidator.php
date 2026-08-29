@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Clicamal\Darauf\Services;
+namespace Clicamal\Darauf\Services\RsaVerification;
 
 use OpenSSLAsymmetricKey;
 

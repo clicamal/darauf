@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Clicamal\Darauf\Services;
+namespace Clicamal\Darauf\Services\RsaVerification;
 
 use Cache;
 use Clicamal\Darauf\Exceptions\ChallengeNotFoundException;
@@ -21,7 +21,7 @@ class Challenge
                 'challengeString' => $challengeString,
                 'publicKey' => $publicKey,
             ],
-            now()->addMinutes(5)
+            now()->addMinutes(5),
         );
 
         return [
@@ -35,7 +35,7 @@ class Challenge
         $challenge = Cache::pull("darauf_rsa_challenge:{$challengeId}");
 
         if ($challenge === null) {
-            throw new ChallengeNotFoundException();
+            throw new ChallengeNotFoundException;
         }
 
         return openssl_verify($challenge['challengeString'], $signature, $challenge['publicKey']);

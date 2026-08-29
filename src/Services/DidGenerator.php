@@ -14,10 +14,10 @@ class DidGenerator
     {
         $usernameHash = hash('sha256', $username);
 
-        $did = 'did:darauf:' . $usernameHash;
+        $did = 'did:darauf:'.$usernameHash;
 
-        if (!self::validate($did)) {
-            throw new InvalidDidException();
+        if (! self::validate($did)) {
+            throw new InvalidDidException;
         }
 
         return $did;
