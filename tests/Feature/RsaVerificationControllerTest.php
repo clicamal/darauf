@@ -101,7 +101,7 @@ it('rejects usernames longer than 30 characters', function () {
 
 it('registers the named challenge route', function () {
     expect(route('darauf.verification.rsa.challenge.generate'))
-        ->toBe('http://localhost/api/darauf/v1/verification/rsa/challenge');
+        ->toBe('http://localhost/api/darauf/v0.1.0/verification/rsa/challenge');
 });
 
 it('accepts a valid signature in the verify endpoint', function () {
@@ -163,5 +163,5 @@ it('rejects a missing payload in the verify endpoint', function () {
 
 it('registers the named verify route', function () {
     expect(route('darauf.verification.rsa.challenge.verify'))
-        ->toBe('http://localhost/api/darauf/v1/verification/rsa/verify');
+        ->toBe('http://localhost/api/darauf/v0.1.0/verification/rsa/verify');
 });

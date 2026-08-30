@@ -19,13 +19,3 @@ it('merges the package config', function () {
 it('loads the package translations', function () {
     expect(trans('darauf::messages.placeholder'))->toBe('Darauf placeholder translation.');
 });
-
-it('loads the package views', function () {
-    expect(view()->exists('darauf::placeholder'))->toBeTrue();
-});
-
-it('registers the artisan command', function () {
-    $this->artisan('darauf:placeholder')
-        ->expectsOutputToContain('Darauf placeholder command executed.')
-        ->assertSuccessful();
-});

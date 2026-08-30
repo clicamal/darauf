@@ -110,5 +110,5 @@ it('rejects a duplicate username', function () {
 
 it('registers the named did document creation route', function () {
     expect(route('darauf.diddocuments.create'))
-        ->toBe('http://localhost/api/darauf/v1/diddocuments');
+        ->toBe('http://localhost/api/darauf/v0.1.0/diddocuments');
 });
