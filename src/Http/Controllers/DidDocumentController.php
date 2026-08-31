@@ -4,13 +4,9 @@ declare(strict_types=1);
 
 namespace Clicamal\Darauf\Http\Controllers;
 
+use Clicamal\Darauf\Darauf;
 use Clicamal\Darauf\Exceptions\DaraufException;
-use Clicamal\Darauf\Exceptions\RsaVerification\InvalidPublicKeyException;
-use Clicamal\Darauf\Exceptions\UsernameTakenException;
 use Clicamal\Darauf\Models\DidDocument;
-use Clicamal\Darauf\Models\VerificationMethod;
-use Clicamal\Darauf\Services\Did;
-use Clicamal\Darauf\Services\RsaVerification\RsaPublicKey;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -24,27 +20,13 @@ class DidDocumentController extends Controller
             'publicKey' => 'required|string|max:451',
         ]);
 
+        $username = $data['username'];
+        $publicKey = $data['publicKey'];
+
         try {
-            if (! RsaPublicKey::validate($data['publicKey'])) {
-                throw new InvalidPublicKeyException;
-            }
+            $did = DidDocument::generateSha256DidFromUsername($username);
 
-            $did = Did::generateSha256FromUsername($data['username']);
-
-            if (DidDocument::where('did', $did)->exists()) {
-                throw new UsernameTakenException;
-            }
-
-            $didDocument = DidDocument::create([
-                'did' => $did,
-            ]);
-
-            $verificationMethod = VerificationMethod::create([
-                'id' => $did.'#key1',
-                'controller' => $did,
-                'type' => 'RSA',
-                'public_key' => $data['publicKey'],
-            ]);
+            Darauf::createDidDocument(['did' => $did], ['publicKeyMultibase' => $publicKey]);
         } catch (DaraufException $exception) {
             return response()->json([
                 'message' => $exception->getMessage(),
