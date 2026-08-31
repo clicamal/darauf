@@ -28,27 +28,30 @@ it('allows mass assignment of all fields', function () {
 
     $method = VerificationMethod::create([
         'id' => 'did:darauf:test#key1',
+        'did_document_did' => 'did:darauf:test',
         'controller' => 'did:darauf:test',
         'type' => 'RSA',
-        'public_key' => 'test-key',
+        'publicKeyMultibase' => 'test-key',
     ]);
 
     expect($method->id)->toBe('did:darauf:test#key1')
+        ->and($method->did_document_did)->toBe('did:darauf:test')
         ->and($method->controller)->toBe('did:darauf:test')
         ->and($method->type)->toBe('RSA')
-        ->and($method->public_key)->toBe('test-key');
+        ->and($method->publicKeyMultibase)->toBe('test-key');
 });
 
-it('belongs to a did document', function () {
+it('belongs to a did document via its controller', function () {
     DidDocument::create(['did' => 'did:darauf:test']);
 
     $method = VerificationMethod::create([
         'id' => 'did:darauf:test#key1',
+        'did_document_did' => 'did:darauf:test',
         'controller' => 'did:darauf:test',
         'type' => 'RSA',
-        'public_key' => 'key',
+        'publicKeyMultibase' => 'key',
     ]);
 
-    expect($method->didDocument)->not->toBeNull()
-        ->and($method->didDocument->did)->toBe('did:darauf:test');
+    expect($method->controller()->first())->not->toBeNull()
+        ->and($method->controller()->first()->did)->toBe('did:darauf:test');
 });

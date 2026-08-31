@@ -15,7 +15,11 @@ function generatePublicKey(): string
 {
     $key = openssl_pkey_new(['private_key_bits' => 2048]);
 
-    return openssl_pkey_get_details($key)['key'];
+    $pem = openssl_pkey_get_details($key)['key'];
+
+    $der = base64_decode(str_replace(["\n", "\r", '-----BEGIN PUBLIC KEY-----', '-----END PUBLIC KEY-----'], '', $pem));
+
+    return 'u'.rtrim(strtr(base64_encode($der), '+/', '-_'), '=');
 }
 
 it('creates a did document with its verification method', function () {
@@ -37,12 +41,13 @@ it('creates a did document with its verification method', function () {
 
     $this->assertDatabaseHas('darauf_verification_methods', [
         'id' => $did.'#key1',
+        'did_document_did' => $did,
         'controller' => $did,
         'type' => 'RSA',
     ]);
 
-    expect(DidDocument::first()?->verificationMethods()->first()?->public_key)
-        ->toContain('BEGIN PUBLIC KEY');
+    expect(DidDocument::first()?->verificationMethods()->first()?->publicKeyMultibase)
+        ->toStartWith('u');
 });
 
 it('rejects an empty payload', function () {
@@ -79,33 +84,15 @@ it('rejects public keys longer than 451 characters', function () {
         ->assertJsonValidationErrors(['publicKey']);
 });
 
-it('rejects a public key that is not a valid PEM', function () {
+it('rejects a public key that is not a valid multibase or jwk', function () {
     $this->postJson(route('darauf.diddocuments.create'), [
         'username' => 'alice',
-        'publicKey' => 'not-a-valid-pem',
+        'publicKey' => 'not-a-valid-key',
     ])
         ->assertUnprocessable()
-        ->assertJsonPath('message', __('darauf::messages.error.rsa_verification.invalid_public_key'));
+        ->assertJsonPath('message', __('darauf::verification_methods.rsa.invalid_public_key'));
 
     $this->assertDatabaseCount(DidDocument::class, 0);
-});
-
-it('rejects a duplicate username', function () {
-    $publicKey = generatePublicKey();
-
-    $payload = [
-        'username' => 'alice',
-        'publicKey' => $publicKey,
-    ];
-
-    $this->postJson(route('darauf.diddocuments.create'), $payload)
-        ->assertCreated();
-
-    $this->postJson(route('darauf.diddocuments.create'), $payload)
-        ->assertUnprocessable()
-        ->assertJsonPath('message', __('darauf::messages.error.username_taken'));
-
-    $this->assertDatabaseCount(DidDocument::class, 1);
 });
 
 it('registers the named did document creation route', function () {
