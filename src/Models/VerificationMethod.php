@@ -20,12 +20,18 @@ class VerificationMethod extends Model
 
     protected $fillable = [
         'id',
+        'did_document_did',
         'controller',
         'type',
-        'public_key',
+        'publicKeyMultibase',
     ];
 
     public function didDocument(): BelongsTo
+    {
+        return $this->belongsTo(DidDocument::class, 'did_document_did', 'did');
+    }
+
+    public function controller(): BelongsTo
     {
         return $this->belongsTo(DidDocument::class, 'controller', 'did');
     }

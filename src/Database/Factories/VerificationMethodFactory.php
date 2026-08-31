@@ -17,10 +17,11 @@ class VerificationMethodFactory extends Factory
         $didDocument = DidDocument::factory()->make();
 
         return [
-            'id' => 'did:darauf:'.fake()->asciify('******************************').'#key',
+            'id' => 'did:darauf:'.fake()->asciify('******************************').'#key1',
+            'did_document_did' => $didDocument->did,
             'controller' => $didDocument->did,
-            'type' => 'RSA',
-            'public_key' => 'RSA Public Key',
+            'type' => fake()->asciify('***************'),
+            'publicKeyMultibase' => fake()->asciify('******************************'),
         ];
     }
 }
