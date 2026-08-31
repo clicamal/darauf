@@ -12,12 +12,13 @@ return new class extends Migration
     {
         Schema::create('darauf_verification_methods', function (Blueprint $table) {
             $table->string('id')->primary();
+            $table->string('did_document_did');
             $table->string('controller');
             $table->string('type');
-            $table->string('public_key');
+            $table->string('publicKeyMultibase');
             $table->timestamps();
 
-            $table->foreign('controller')
+            $table->foreign('did_document_did')
                 ->references('did')
                 ->on('darauf_did_documents')
                 ->onDelete('cascade');
