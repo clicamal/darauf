@@ -7,24 +7,19 @@ namespace Clicamal\Darauf\VerificationMethods;
 interface ChallengeVerifierContract
 {
     /**
-     * Returns the verification method type.
-     */
-    public static function getVerificationType(): string;
-
-    /**
-     * Validates a request body before passing it to the generateChallenge method.
+     * Validates the request data for generating a challenge.
      */
     public static function validateGenerateChallengeRequest(array $requestAll): array;
 
     /**
-     * Validates a request body before passing it to the verifyChallenge method.
+     * Validates the request data for verifying a challenge.
      */
     public static function validateVerifyChallengeRequest(array $requestAll): array;
 
     /**
      * Generates a challenge for the verification method.
      *
-     * @return bool
+     * @return array{id: string, string: string}
      */
     public static function generateChallenge(array $data): array;
 
@@ -32,9 +27,4 @@ interface ChallengeVerifierContract
      * Verifies a challenge for the verification method.
      */
     public static function verifyChallenge(array $data): bool;
-
-    /**
-     * Validates a public key.
-     */
-    public static function validatePublicKey(string|array $publicKey): bool;
 }

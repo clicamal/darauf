@@ -11,15 +11,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('darauf_verification_methods', function (Blueprint $table) {
-            $table->string('id')->primary();
-            $table->string('did_document_did');
-            $table->string('controller');
-            $table->string('type');
-            $table->string('publicKeyMultibase');
+            $table->id();
+            $table->string('verification_method_id')->unique();
+            $table->string('did_document_id');
+            $table->text('serialized')->nullable(false);
             $table->timestamps();
 
-            $table->foreign('did_document_did')
-                ->references('did')
+            $table->foreign('did_document_id')
+                ->references('id')
                 ->on('darauf_did_documents')
                 ->onDelete('cascade');
         });

@@ -11,7 +11,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('darauf_did_documents', function (Blueprint $table) {
-            $table->string('did')->primary();
+            $table->id();
+            $table->string('did_document_id')->unique();
+            $table->text('serialized')->nullable(false);
             $table->timestamps();
         });
     }

@@ -7,19 +7,27 @@ namespace Clicamal\Darauf\Http\Controllers;
 use Clicamal\Darauf\Darauf;
 use Clicamal\Darauf\Exceptions\DaraufException;
 use Clicamal\Darauf\Exceptions\VerificationFailedException;
+use Clicamal\Darauf\Exceptions\VerificationMethodNotSupportedException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 
 class ChallengeController extends Controller
 {
+    /**
+     * Generates a new challenge for the specified verification method.
+     */
     public function generateChallenge(Request $request, string $method): JsonResponse
     {
-        $verificationMethod = Darauf::CHALLENGE_VERIFIERS[$method] ?? array_values(Darauf::CHALLENGE_VERIFIERS)[0];
-
-        $data = $verificationMethod::validateGenerateChallengeRequest($request->all());
+        $verificationMethod = Darauf::CHALLENGE_VERIFIERS[$method] ?? null;
 
         try {
+            if ($verificationMethod === null) {
+                throw new VerificationMethodNotSupportedException;
+            }
+
+            $data = $verificationMethod::validateGenerateChallengeRequest($request->all());
+
             $challenge = $verificationMethod::generateChallenge($data);
 
             return response()->json($challenge, 201);
@@ -30,15 +38,22 @@ class ChallengeController extends Controller
         }
     }
 
+    /**
+     * Verifies a challenge for the specified verification method.
+     */
     public function verifyChallenge(Request $request, string $method): JsonResponse
     {
-        $verificationMethod = Darauf::CHALLENGE_VERIFIERS[$method] ?? array_values(Darauf::CHALLENGE_VERIFIERS)[0];
-
-        $data = $verificationMethod::validateVerifyChallengeRequest($request->all());
+        $verificationMethod = Darauf::CHALLENGE_VERIFIERS[$method] ?? null;
 
         try {
+            if ($verificationMethod === null) {
+                throw new VerificationMethodNotSupportedException;
+            }
+
+            $data = $verificationMethod::validateVerifyChallengeRequest($request->all());
+
             if (! $verificationMethod::verifyChallenge($data)) {
-                throw new VerificationFailedException;
+                throw new VerificationFailedException();
             }
 
             return response()->json([

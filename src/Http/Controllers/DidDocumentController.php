@@ -6,35 +6,30 @@ namespace Clicamal\Darauf\Http\Controllers;
 
 use Clicamal\Darauf\Darauf;
 use Clicamal\Darauf\Exceptions\DaraufException;
-use Clicamal\Darauf\Models\DidDocument;
+use Clicamal\Darauf\Helpers\DidHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 
 class DidDocumentController extends Controller
 {
-    public function create(Request $request): JsonResponse
+    /**
+     * Registers a new DID document sent by the client in the system.
+     */
+    public function register(Request $request): JsonResponse
     {
-        $data = $request->validate([
-            'username' => 'required|string|max:30',
-            'publicKey' => 'required|string|max:451',
-        ]);
-
-        $username = $data['username'];
-        $publicKey = $data['publicKey'];
+        $data = DidHelper::validateDidDocument($request->all());
 
         try {
-            $did = DidDocument::generateSha256DidFromUsername($username);
+            $didDocument = Darauf::createDidDocument($data);
 
-            Darauf::createDidDocument(['did' => $did], ['publicKeyMultibase' => $publicKey]);
+            return response()->json([
+                'did' => $didDocument->__get('did_document_id'),
+            ], 201);
         } catch (DaraufException $exception) {
             return response()->json([
                 'message' => $exception->getMessage(),
             ], 422);
         }
-
-        return response()->json([
-            'message' => __('darauf::messages.success.create_did_document'),
-        ], 201);
     }
 }

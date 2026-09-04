@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Clicamal\Darauf;
 
+use Clicamal\Darauf\Exceptions\DaraufException;
 use Clicamal\Darauf\Models\DidDocument;
 use Clicamal\Darauf\Models\VerificationMethod;
 use Clicamal\Darauf\VerificationMethods\ChallengeVerifierContract;
@@ -13,11 +14,11 @@ use Clicamal\Darauf\VerificationMethods\RSA\RSA;
 class Darauf
 {
     /**
-     * All supported verification methods. Feel free to add your own created methods.
-     * At least one is required. The first one is the default for new DID documents.
+     * All the challenge verifiers available in the system, mapped by their names.
+     * Feel free to add more challenge verifiers to this array as needed.
      *
-     * To create a verification method simply create a class that implements the
-     * ChallengeVerifierContract contract and add it to this array, with its respective method.
+     * To add a new challenge verifier, create a class that implements the
+     * ChallengeVerifierContract interface and add it to this array with a unique name.
      *
      * @var array<string, ChallengeVerifierContract>
      */
@@ -26,40 +27,47 @@ class Darauf
     ];
 
     /**
-     * Creates a DID document with a default verification method.
+     * Creates a new DID document and its associated verification methods in the database.
      *
      * @param  array{did: string}  $didDocumentData
-     * @param array{
-     *      id?: string,
-     *      controller?: string,
-     *      type?: string,
-     *      publicKeyMultibase?: string,
-     *      publicKeyJwk?: array<string, string>
-     * } $verificationMethodData
-     *
-     * @throws InvalidPublicKeyException
      */
-    public static function createDidDocument(array $didDocumentData, array $verificationMethodData): DidDocument
+    public static function createDidDocument(array $didDocumentData): DidDocument
     {
-        $publicKey = $verificationMethodData['publicKeyMultibase'] ?? $verificationMethodData['publicKeyJwk'] ?? null;
+        $didDocumentId = $didDocumentData['id'];
 
-        $defaultChallengeVerifier = array_values(self::CHALLENGE_VERIFIERS)[0];
+        $verificationMethods = $didDocumentData['verificationMethod'];
+        $serializedVerificationMethods = [];
 
-        if (! $defaultChallengeVerifier::validatePublicKey($publicKey)) {
-            throw new InvalidPublicKeyException;
+        foreach ($verificationMethods as $verificationMethodData) {
+            $serializedVerificationMethod = json_encode($verificationMethodData);
+
+            if ($serializedVerificationMethod === false) {
+                throw new DaraufException('Failed to serialize verification method data.');
+            }
+
+            $serializedVerificationMethods[] = ['id' => $verificationMethodData['id'], 'serialized' => $serializedVerificationMethod];
         }
 
-        $didDocument = DidDocument::create($didDocumentData);
+        unset($didDocumentData['verificationMethod']);
 
-        $verificationMethodCreateData = [
-            'did_document_did' => $didDocument->did,
-            'id' => (string) $didDocument->did.'#key1',
-            'controller' => $didDocument->did,
-            'type' => $defaultChallengeVerifier::getVerificationType(),
-            ...$verificationMethodData,
-        ];
+        $serializedDidDocument = json_encode($didDocumentData);
 
-        VerificationMethod::create($verificationMethodCreateData);
+        $didDocument = DidDocument::create([
+            'did_document_id' => $didDocumentId,
+            'serialized' => $serializedDidDocument,
+        ]);
+
+        foreach ($serializedVerificationMethods as $serializedVerificationMethod) {
+            VerificationMethod::create([
+                'verification_method_id' => $serializedVerificationMethod['id'],
+                'did_document_id' => $didDocument->id,
+                'serialized' => $serializedVerificationMethod['serialized'],
+            ]);
+        }
+
+        if ($serializedDidDocument === false) {
+            throw new DaraufException('Failed to serialize DID document data.');
+        }
 
         return $didDocument;
     }

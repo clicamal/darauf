@@ -9,6 +9,7 @@ return [
         'username_taken' => 'Username already taken.',
         'did_document_not_found' => 'DID document not found.',
         'general_error' => 'Error completing request.',
+        'verification_method_not_supported' => 'Verification method not supported.',
         'verification_failed' => 'Verification failed.',
     ],
     'success' => [
