@@ -6,13 +6,11 @@ namespace Clicamal\Darauf\Database\Factories;
 
 use Clicamal\Darauf\Helpers\DidHelper;
 use Clicamal\Darauf\Models\DidDocument;
-use Illuminate\Database\Eloquent\Factories\Attributes\UseModel;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
  * @extends Factory<DidDocument>
  */
-#[UseModel(DidDocument::class)]
 class DidDocumentFactory extends Factory
 {
     public function definition(): array
@@ -25,5 +23,10 @@ class DidDocumentFactory extends Factory
                 'id' => $didDocumentId,
             ]),
         ];
+    }
+
+    public function modelName(): string
+    {
+        return DidDocument::class;
     }
 }

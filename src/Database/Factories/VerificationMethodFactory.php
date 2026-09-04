@@ -6,14 +6,12 @@ namespace Clicamal\Darauf\Database\Factories;
 
 use Clicamal\Darauf\Models\DidDocument;
 use Clicamal\Darauf\Models\VerificationMethod;
-use Illuminate\Database\Eloquent\Factories\Attributes\UseModel;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
 /**
  * @extends Factory<VerificationMethod>
  */
-#[UseModel(VerificationMethod::class)]
 class VerificationMethodFactory extends Factory
 {
     public function definition(): array
@@ -30,5 +28,10 @@ class VerificationMethodFactory extends Factory
                 'publicKeyMultibase' => 'u'.Str::random(43),
             ]),
         ];
+    }
+
+    public function modelName(): string
+    {
+        return VerificationMethod::class;
     }
 }

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Clicamal\Darauf\Models;
 
 use Clicamal\Darauf\Database\Factories\DidDocumentFactory;
-use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -15,11 +14,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $did_document_id
  * @property string $serialized
  */
-#[UseFactory(DidDocumentFactory::class)]
 class DidDocument extends Model
 {
     /** @use HasFactory<DidDocumentFactory> */
     use HasFactory;
+
+    protected static function newFactory(): DidDocumentFactory
+    {
+        return new DidDocumentFactory;
+    }
 
     protected $table = 'darauf_did_documents';
 
