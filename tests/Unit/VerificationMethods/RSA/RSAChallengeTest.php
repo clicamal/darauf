@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Clicamal\Darauf\Exceptions\DidDocumentNotFoundException;
+use Clicamal\Darauf\Exceptions\InvalidDidException;
 use Clicamal\Darauf\Models\DidDocument;
 use Clicamal\Darauf\Models\VerificationMethod;
 use Clicamal\Darauf\VerificationMethods\RSA\Exceptions\ChallengeNotFoundException;
@@ -15,58 +16,74 @@ beforeEach(function () {
     ])->assertSuccessful();
 });
 
-function unitRsaUser(string $username): array
+function unitRsaUser(string $suffix): array
 {
-    $did = DidDocument::generateSha256DidFromUsername($username);
+    $did = 'did:darauf:'.$suffix;
 
-    DidDocument::create(['did' => $did]);
+    $document = DidDocument::factory()->create([
+        'did_document_id' => $did,
+    ]);
 
-    $key = openssl_pkey_new(['private_key_bits' => 2048]);
+    $keyPair = rsaKeyPair();
 
-    $publicPem = openssl_pkey_get_details($key)['key'];
-
-    $der = base64_decode(str_replace(["\n", "\r", '-----BEGIN PUBLIC KEY-----', '-----END PUBLIC KEY-----'], '', $publicPem));
-
-    $multibase = 'u'.rtrim(strtr(base64_encode($der), '+/', '-_'), '=');
-
-    VerificationMethod::create([
-        'id' => $did.'#key1',
-        'did_document_did' => $did,
-        'controller' => $did,
-        'type' => 'RSA',
-        'publicKeyMultibase' => $multibase,
+    VerificationMethod::factory()->create([
+        'verification_method_id' => $did.'#key-1',
+        'did_document_id' => $document->id,
+        'serialized' => json_encode([
+            'id' => $did.'#key-1',
+            'type' => 'RSA',
+            'controller' => $did,
+            'publicKeyMultibase' => $keyPair['publicKeyMultibase'],
+        ]),
     ]);
 
     return [
         'did' => $did,
-        'private' => $key,
-        'publicMultibase' => $multibase,
+        'private' => $keyPair['private'],
+        'publicKeyMultibase' => $keyPair['publicKeyMultibase'],
     ];
 }
 
 it('generates a challenge with an id and a string', function () {
-    unitRsaUser('alice');
+    $user = unitRsaUser('alice');
 
-    $challenge = RSA::generateChallenge(['username' => 'alice']);
+    $challenge = RSA::generateChallenge(['didDocumentId' => $user['did']]);
 
     expect($challenge)->toHaveKeys(['id', 'string'])
         ->and(Cache::has("darauf_rsa_challenge:{$challenge['id']}"))->toBeTrue();
 });
 
+it('throws when the did is not valid', function () {
+    RSA::generateChallenge(['didDocumentId' => 'not-a-did']);
+})->throws(InvalidDidException::class);
+
 it('throws when the did document does not exist', function () {
-    RSA::generateChallenge(['username' => 'ghost']);
+    RSA::generateChallenge(['didDocumentId' => 'did:darauf:ghost']);
 })->throws(DidDocumentNotFoundException::class);
 
 it('throws when the did document has no rsa verification method', function () {
-    DidDocument::create(['did' => DidDocument::generateSha256DidFromUsername('alice')]);
+    $document = DidDocument::factory()->create([
+        'did_document_id' => 'did:darauf:nosuchkey',
+    ]);
 
-    RSA::generateChallenge(['username' => 'alice']);
+    VerificationMethod::factory()->create([
+        'verification_method_id' => 'did:darauf:nosuchkey#key-1',
+        'did_document_id' => $document->id,
+        'serialized' => json_encode([
+            'id' => 'did:darauf:nosuchkey#key-1',
+            'type' => 'Ed25519',
+            'controller' => 'did:darauf:nosuchkey',
+            'publicKeyMultibase' => 'z'.base64url_encode('some-key'),
+        ]),
+    ]);
+
+    RSA::generateChallenge(['didDocumentId' => 'did:darauf:nosuchkey']);
 })->throws(ChallengeNotFoundException::class);
 
 it('verifies a valid signature', function () {
     $user = unitRsaUser('alice');
 
-    $challenge = RSA::generateChallenge(['username' => 'alice']);
+    $challenge = RSA::generateChallenge(['didDocumentId' => $user['did']]);
 
     openssl_sign($challenge['string'], $signature, $user['private']);
 
@@ -79,7 +96,7 @@ it('verifies a valid signature', function () {
 it('rejects an invalid signature', function () {
     $user = unitRsaUser('alice');
 
-    $challenge = RSA::generateChallenge(['username' => 'alice']);
+    $challenge = RSA::generateChallenge(['didDocumentId' => $user['did']]);
 
     openssl_sign('not-the-challenge', $signature, $user['private']);
 
@@ -92,14 +109,14 @@ it('rejects an invalid signature', function () {
 it('throws when the challenge is not found', function () {
     RSA::verifyChallenge([
         'challengeId' => 'missing-challenge-id',
-        'signature' => 'signature',
+        'signature' => base64_encode('signature'),
     ]);
 })->throws(ChallengeNotFoundException::class);
 
 it('is single use', function () {
     $user = unitRsaUser('alice');
 
-    $challenge = RSA::generateChallenge(['username' => 'alice']);
+    $challenge = RSA::generateChallenge(['didDocumentId' => $user['did']]);
 
     openssl_sign($challenge['string'], $signature, $user['private']);
 

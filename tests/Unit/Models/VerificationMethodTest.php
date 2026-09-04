@@ -16,42 +16,54 @@ it('uses the correct table', function () {
     expect((new VerificationMethod)->getTable())->toBe('darauf_verification_methods');
 });
 
-it('uses a non-incrementing string primary key', function () {
+it('uses an incrementing integer primary key', function () {
     $method = new VerificationMethod;
 
-    expect($method->getIncrementing())->toBeFalse()
-        ->and($method->getKeyType())->toBe('string');
+    expect($method->getIncrementing())->toBeTrue()
+        ->and($method->getKeyType())->toBe('int');
 });
 
-it('allows mass assignment of all fields', function () {
-    DidDocument::create(['did' => 'did:darauf:test']);
+it('allows mass assignment of its fillable fields', function () {
+    $document = DidDocument::factory()->create();
 
     $method = VerificationMethod::create([
-        'id' => 'did:darauf:test#key1',
-        'did_document_did' => 'did:darauf:test',
-        'controller' => 'did:darauf:test',
-        'type' => 'RSA',
-        'publicKeyMultibase' => 'test-key',
+        'verification_method_id' => $document->did_document_id.'#key-1',
+        'did_document_id' => $document->id,
+        'serialized' => json_encode(['id' => $document->did_document_id.'#key-1']),
     ]);
 
-    expect($method->id)->toBe('did:darauf:test#key1')
-        ->and($method->did_document_did)->toBe('did:darauf:test')
-        ->and($method->controller)->toBe('did:darauf:test')
-        ->and($method->type)->toBe('RSA')
-        ->and($method->publicKeyMultibase)->toBe('test-key');
+    expect($method->verification_method_id)->toBe($document->did_document_id.'#key-1')
+        ->and($method->did_document_id)->toBe($document->id)
+        ->and(json_decode($method->serialized, true)['id'])->toBe($document->did_document_id.'#key-1');
 });
 
-it('belongs to a did document via its controller', function () {
-    DidDocument::create(['did' => 'did:darauf:test']);
+it('has a unique verification method id', function () {
+    $document = DidDocument::factory()->create();
 
-    $method = VerificationMethod::create([
-        'id' => 'did:darauf:test#key1',
-        'did_document_did' => 'did:darauf:test',
-        'controller' => 'did:darauf:test',
-        'type' => 'RSA',
-        'publicKeyMultibase' => 'key',
+    VerificationMethod::factory()->create([
+        'did_document_id' => $document->id,
     ]);
 
-    expect($method->controller()->first())->not->toBeNull()
-        ->and($method->controller()->first()->did)->toBe('did:darauf:test');
+    $existing = VerificationMethod::first();
+
+    expect(fn () => VerificationMethod::factory()->create([
+        'verification_method_id' => $existing->verification_method_id,
+        'did_document_id' => $document->id,
+    ]))->toThrow(RuntimeException::class);
+});
+
+it('belongs to a did document', function () {
+    $method = VerificationMethod::factory()->create();
+
+    expect($method->didDocument)->not->toBeNull()
+        ->and($method->didDocument)->toBeInstanceOf(DidDocument::class)
+        ->and($method->didDocument->id)->toBe($method->did_document_id);
+});
+
+it('creates a coherent method through its factory', function () {
+    $method = VerificationMethod::factory()->create();
+
+    expect($method->verification_method_id)->toContain('#key-1')
+        ->and(json_decode($method->serialized, true)['type'])->toBe('RSA')
+        ->and(json_decode($method->serialized, true)['publicKeyMultibase'])->toStartWith('u');
 });

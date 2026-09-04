@@ -11,91 +11,72 @@ beforeEach(function () {
     ])->assertSuccessful();
 });
 
-function generatePublicKey(): string
-{
-    $key = openssl_pkey_new(['private_key_bits' => 2048]);
-
-    $pem = openssl_pkey_get_details($key)['key'];
-
-    $der = base64_decode(str_replace(["\n", "\r", '-----BEGIN PUBLIC KEY-----', '-----END PUBLIC KEY-----'], '', $pem));
-
-    return 'u'.rtrim(strtr(base64_encode($der), '+/', '-_'), '=');
-}
-
 it('creates a did document with its verification method', function () {
-    $publicKey = generatePublicKey();
+    $document = didDocumentData();
 
-    $response = $this->postJson(route('darauf.diddocuments.create'), [
-        'username' => 'alice',
-        'publicKey' => $publicKey,
-    ]);
-
-    $did = 'did:darauf:'.hash('sha256', 'alice');
+    $response = $this->postJson(route('darauf.diddocuments.register'), $document);
 
     $response->assertCreated()
-        ->assertJsonPath('message', __('darauf::messages.success.create_did_document'));
+        ->assertJsonPath('did', $document['id']);
 
     $this->assertDatabaseHas('darauf_did_documents', [
-        'did' => $did,
+        'did_document_id' => $document['id'],
     ]);
 
     $this->assertDatabaseHas('darauf_verification_methods', [
-        'id' => $did.'#key1',
-        'did_document_did' => $did,
-        'controller' => $did,
-        'type' => 'RSA',
+        'verification_method_id' => $document['verificationMethod'][0]['id'],
     ]);
 
-    expect(DidDocument::first()?->verificationMethods()->first()?->publicKeyMultibase)
-        ->toStartWith('u');
+    $persisted = DidDocument::where('did_document_id', $document['id'])->first();
+
+    expect(json_decode($persisted->serialized, true)['id'])->toBe($document['id'])
+        ->and($persisted->verificationMethods)->toHaveCount(1);
 });
 
 it('rejects an empty payload', function () {
-    $this->postJson(route('darauf.diddocuments.create'), [])
+    $this->postJson(route('darauf.diddocuments.register'), [])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['username', 'publicKey']);
+        ->assertJsonValidationErrors(['id']);
 
     $this->assertDatabaseCount(DidDocument::class, 0);
 });
 
-it('rejects usernames longer than 30 characters', function () {
-    $this->postJson(route('darauf.diddocuments.create'), [
-        'username' => str_repeat('a', 31),
-        'publicKey' => generatePublicKey(),
-    ])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors(['username']);
-});
+it('rejects a did document without an id', function () {
+    $document = didDocumentData();
+    unset($document['id']);
 
-it('accepts usernames with exactly 30 characters', function () {
-    $this->postJson(route('darauf.diddocuments.create'), [
-        'username' => str_repeat('a', 30),
-        'publicKey' => generatePublicKey(),
-    ])
-        ->assertCreated();
-});
-
-it('rejects public keys longer than 451 characters', function () {
-    $this->postJson(route('darauf.diddocuments.create'), [
-        'username' => 'alice',
-        'publicKey' => str_repeat('a', 452),
-    ])
+    $this->postJson(route('darauf.diddocuments.register'), $document)
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['publicKey']);
-});
-
-it('rejects a public key that is not a valid multibase or jwk', function () {
-    $this->postJson(route('darauf.diddocuments.create'), [
-        'username' => 'alice',
-        'publicKey' => 'not-a-valid-key',
-    ])
-        ->assertUnprocessable()
-        ->assertJsonPath('message', __('darauf::verification_methods.rsa.invalid_public_key'));
+        ->assertJsonValidationErrors(['id']);
 
     $this->assertDatabaseCount(DidDocument::class, 0);
 });
 
-it('registers the named did document creation route', function () {
-    expect(route('darauf.diddocuments.create'))
+it('rejects a verification method without an id', function () {
+    $document = didDocumentData();
+    unset($document['verificationMethod'][0]['id']);
+
+    $this->postJson(route('darauf.diddocuments.register'), $document)
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['verificationMethod.0.id']);
+
+    $this->assertDatabaseCount(DidDocument::class, 0);
+});
+
+it('registers the named did document route', function () {
+    expect(route('darauf.diddocuments.register'))
         ->toBe('http://localhost/api/darauf/v0.1.0/diddocuments');
+});
+
+it('stores the verification methods serialized', function () {
+    $document = didDocumentData();
+
+    $this->postJson(route('darauf.diddocuments.register'), $document)->assertCreated();
+
+    $persisted = DidDocument::where('did_document_id', $document['id'])->first();
+    $method = $persisted->verificationMethods()->first();
+
+    expect(json_decode($method->serialized, true)['id'])->toBe($document['verificationMethod'][0]['id'])
+        ->and(json_decode($method->serialized, true)['type'])->toBe('RSA')
+        ->and(json_decode($method->serialized, true)['publicKeyMultibase'])->toStartWith('u');
 });

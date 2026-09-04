@@ -12,40 +12,39 @@ beforeEach(function () {
     ])->assertSuccessful();
 });
 
-function rsaUser(string $username): array
+function rsaUser(string $suffix): array
 {
-    $did = DidDocument::generateSha256DidFromUsername($username);
+    $did = 'did:darauf:'.$suffix;
 
-    DidDocument::create(['did' => $did]);
+    $document = DidDocument::factory()->create([
+        'did_document_id' => $did,
+    ]);
 
-    $key = openssl_pkey_new(['private_key_bits' => 2048]);
+    $keyPair = rsaKeyPair();
 
-    $publicPem = openssl_pkey_get_details($key)['key'];
-
-    $der = base64_decode(str_replace(["\n", "\r", '-----BEGIN PUBLIC KEY-----', '-----END PUBLIC KEY-----'], '', $publicPem));
-
-    $multibase = 'u'.rtrim(strtr(base64_encode($der), '+/', '-_'), '=');
-
-    VerificationMethod::create([
-        'id' => $did.'#key1',
-        'did_document_did' => $did,
-        'controller' => $did,
-        'type' => 'RSA',
-        'publicKeyMultibase' => $multibase,
+    VerificationMethod::factory()->create([
+        'verification_method_id' => $did.'#key-1',
+        'did_document_id' => $document->id,
+        'serialized' => json_encode([
+            'id' => $did.'#key-1',
+            'type' => 'RSA',
+            'controller' => $did,
+            'publicKeyMultibase' => $keyPair['publicKeyMultibase'],
+        ]),
     ]);
 
     return [
         'did' => $did,
-        'private' => $key,
-        'publicMultibase' => $multibase,
+        'private' => $keyPair['private'],
+        'publicKeyMultibase' => $keyPair['publicKeyMultibase'],
     ];
 }
 
-it('returns a challenge for a registered user', function () {
+it('returns a challenge for a registered document', function () {
     $user = rsaUser('alice');
 
     $response = $this->postJson(route('darauf.verification.challenge.generate', ['method' => 'RSA']), [
-        'username' => 'alice',
+        'didDocumentId' => $user['did'],
     ]);
 
     $response->assertCreated();
@@ -56,20 +55,51 @@ it('returns a challenge for a registered user', function () {
         ->and(Cache::has("darauf_rsa_challenge:{$challenge['id']}"))->toBeTrue();
 });
 
-it('rejects a challenge for an unregistered user', function () {
+it('rejects a challenge for an unregistered document', function () {
     $this->postJson(route('darauf.verification.challenge.generate', ['method' => 'RSA']), [
-        'username' => 'ghost',
+        'didDocumentId' => 'did:darauf:ghost',
     ])
         ->assertUnprocessable()
         ->assertJsonPath('message', __('darauf::messages.error.did_document_not_found'));
 });
 
-it('rejects a username that is too long', function () {
+it('rejects a challenge for an invalid did', function () {
     $this->postJson(route('darauf.verification.challenge.generate', ['method' => 'RSA']), [
-        'username' => str_repeat('a', 31),
+        'didDocumentId' => 'not-a-did',
     ])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['username']);
+        ->assertJsonPath('message', __('darauf::messages.error.invalid_did'));
+});
+
+it('rejects a did document id without an rsa verification method', function () {
+    rsaUser('alice');
+
+    $document = DidDocument::factory()->create([
+        'did_document_id' => 'did:darauf:norsa',
+    ]);
+
+    VerificationMethod::factory()->create([
+        'verification_method_id' => 'did:darauf:norsa#key-1',
+        'did_document_id' => $document->id,
+        'serialized' => json_encode([
+            'id' => 'did:darauf:norsa#key-1',
+            'type' => 'Ed25519',
+            'controller' => 'did:darauf:norsa',
+            'publicKeyMultibase' => 'z'.base64url_encode('some-key'),
+        ]),
+    ]);
+
+    $this->postJson(route('darauf.verification.challenge.generate', ['method' => 'RSA']), [
+        'didDocumentId' => 'did:darauf:norsa',
+    ])
+        ->assertUnprocessable()
+        ->assertJsonPath('message', __('darauf::verification_methods.rsa.challenge_not_found'));
+});
+
+it('rejects a missing didDocumentId in the generate endpoint', function () {
+    $this->postJson(route('darauf.verification.challenge.generate', ['method' => 'RSA']), [])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['didDocumentId']);
 });
 
 it('registers the named challenge generate route', function () {
@@ -81,7 +111,7 @@ it('accepts a valid signature in the verify endpoint', function () {
     $user = rsaUser('alice');
 
     $challengeResponse = $this->postJson(route('darauf.verification.challenge.generate', ['method' => 'RSA']), [
-        'username' => 'alice',
+        'didDocumentId' => $user['did'],
     ])->assertCreated();
 
     $challenge = $challengeResponse->json();
@@ -91,14 +121,15 @@ it('accepts a valid signature in the verify endpoint', function () {
     $this->postJson(route('darauf.verification.challenge.verify', ['method' => 'RSA']), [
         'challengeId' => $challenge['id'],
         'signature' => base64_encode($signature),
-    ])->assertOk();
+    ])->assertOk()
+        ->assertJsonPath('message', __('darauf::messages.success.did_subject_authenticated'));
 });
 
 it('rejects an invalid signature in the verify endpoint', function () {
     $user = rsaUser('alice');
 
     $challengeResponse = $this->postJson(route('darauf.verification.challenge.generate', ['method' => 'RSA']), [
-        'username' => 'alice',
+        'didDocumentId' => $user['did'],
     ])->assertCreated();
 
     $challenge = $challengeResponse->json();
@@ -116,7 +147,7 @@ it('rejects an invalid signature in the verify endpoint', function () {
 it('rejects a challenge that was never generated', function () {
     $this->postJson(route('darauf.verification.challenge.verify', ['method' => 'RSA']), [
         'challengeId' => 'missing-challenge-id',
-        'signature' => 'signature',
+        'signature' => base64_encode('signature'),
     ])
         ->assertUnprocessable()
         ->assertJsonPath('message', __('darauf::verification_methods.rsa.challenge_not_found'));
