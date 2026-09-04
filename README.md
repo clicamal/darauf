@@ -34,6 +34,12 @@ signature flow — without coupling your subjects to an `Authenticatable` model.
 - [Requirements](#requirements)
 - [Installation](#installation)
 - [Usage](#usage)
+- [Customization](#customization)
+  - [Building your own DID document workflow](#building-your-own-did-document-workflow)
+  - [Storing DID documents programmatically](#storing-did-documents-programmatically)
+  - [Adding a custom challenge verifier](#adding-a-custom-challenge-verifier)
+  - [Custom verification method types](#custom-verification-method-types)
+- [Code Structure](#code-structure)
 - [Testing](#testing)
 - [Changelog](#changelog)
 - [Contributing](#contributing)
@@ -154,6 +160,284 @@ subject is considered authenticated for that request:
 ```
 
 Otherwise a `422` is returned with a descriptive message.
+
+## Customization
+
+The HTTP endpoints cover a straightforward flow, but you are free to extend the
+package to fit your domain. Below are the main extension points.
+
+### Building your own DID document workflow
+
+The exposed routes are thin wrappers. If you need a custom registration,
+update, or delete workflow (e.g. authenticated by your own user model, an
+admin panel, a queue job, or a one-time import script), you do not have to go
+through the HTTP layer. The core building blocks are the models and the
+`Darauf` facade:
+
+```php
+use Clicamal\Darauf\Darauf;
+use Clicamal\Darauf\Models\DidDocument;
+use Clicamal\Darauf\Models\VerificationMethod;
+
+// Register a DID document programmatically
+$document = Darauf::createDidDocument([
+    'id' => 'did:darauf:custom-id',
+    'verificationMethod' => [
+        [
+            'id' => 'did:darauf:custom-id#key-1',
+            'controller' => 'did:darauf:custom-id',
+            'type' => 'RSA',
+            'publicKeyMultibase' => 'z4Mk...',
+        ],
+    ],
+]);
+
+// Find an existing document and inspect it
+$found = DidDocument::where('did_document_id', 'did:darauf:custom-id')->first();
+
+// Decode the serialized W3C document
+$decoded = json_decode($found->serialized, true);
+
+// Query the verification methods bound to it
+foreach ($found->verificationMethods as $method) {
+    $methodData = json_decode($method->serialized, true);
+    // -> ['id' => ..., 'controller' => ..., 'type' => 'RSA', ...]
+}
+
+// Add a new verification method to an existing document
+VerificationMethod::create([
+    'verification_method_id' => 'did:darauf:custom-id#key-2',
+    'did_document_id' => $found->id,
+    'serialized' => json_encode([
+        'id' => 'did:darauf:custom-id#key-2',
+        'controller' => 'did:darauf:custom-id',
+        'type' => 'Ed25519',
+        'publicKeyMultibase' => 'z6Mk...',
+    ]),
+]);
+
+// Update a verification method's serialized data
+$method->update([
+    'serialized' => json_encode([
+        'id' => 'did:darauf:custom-id#key-1',
+        'controller' => 'did:darauf:custom-id',
+        'type' => 'RSA',
+        'publicKeyMultibase' => 'z4Mk...new-key...',
+    ]),
+]);
+```
+
+Because the models are ordinary Eloquent models, you can use them in your own
+controllers, policies, middleware, or observers like any other model.
+
+### Adding a custom challenge verifier
+
+Challenge verification is pluggable. To add support for a new verification
+method (e.g. Ed25519, secp256k1, or a scheme of your own), implement the
+`ChallengeVerifierContract` interface and register it under a name:
+
+```php
+<?php
+
+namespace App\VerificationMethods\Ed25519;
+
+use Clicamal\Darauf\VerificationMethods\ChallengeVerifierContract;
+
+class Ed25519 implements ChallengeVerifierContract
+{
+    public static function validateGenerateChallengeRequest(array $requestAll): array
+    {
+        return Validator::make($requestAll, [
+            'didDocumentId' => 'required|string|max:100',
+        ])->validate();
+    }
+
+    public static function validateVerifyChallengeRequest(array $requestAll): array
+    {
+        return Validator::make($requestAll, [
+            'challengeId' => 'required|string|max:100',
+            'signature' => 'required|string|max:512',
+        ])->validate();
+    }
+
+    public static function generateChallenge(array $data): array
+    {
+        // Load the DID document, resolve its verification method, and
+        // store a challenge (e.g. in the cache or in your own table).
+        $id = Str::uuid()->toString();
+        $string = Str::random(32);
+
+        Cache::put("darauf_ed25519_challenge:{$id}", $string, now()->addMinutes(5));
+
+        return ['id' => $id, 'string' => $string];
+    }
+
+    public static function verifyChallenge(array $data): bool
+    {
+        $challenge = Cache::pull("darauf_ed25519_challenge:{$data['challengeId']}");
+
+        if ($challenge === null) {
+            throw new ChallengeNotFoundException;
+        }
+
+        // Verify the signature against the document's public key.
+        return verify_signature($challenge, base64_decode($data['signature']));
+    }
+}
+```
+
+Then register it. The package's `ChallengeController` resolves the verifier by
+name from the built-in `Darauf::CHALLENGE_VERIFIERS` map. To add a verifier
+without touching the dependency, extend the controller and re-implement the two
+actions so they resolve from your own map:
+
+```php
+<?php
+
+namespace App\Http\Controllers;
+
+use Clicamal\Darauf\Darauf;
+use Clicamal\Darauf\Exceptions\DaraufException;
+use Clicamal\Darauf\Exceptions\VerificationFailedException;
+use Clicamal\Darauf\Exceptions\VerificationMethodNotSupportedException;
+use Clicamal\Darauf\VerificationMethods\ChallengeVerifierContract;
+use App\VerificationMethods\Ed25519\Ed25519;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class ChallengeController
+{
+    /**
+     * @var array<string, class-string<ChallengeVerifierContract>>
+     */
+    protected const CHALLENGE_VERIFIERS = [
+        'RSA' => Darauf::CHALLENGE_VERIFIERS['RSA'],
+        'Ed25519' => Ed25519::class,
+    ];
+
+    public function generateChallenge(Request $request, string $method): JsonResponse
+    {
+        $verificationMethod = static::CHALLENGE_VERIFIERS[$method] ?? null;
+
+        try {
+            if ($verificationMethod === null) {
+                throw new VerificationMethodNotSupportedException;
+            }
+
+            $data = $verificationMethod::validateGenerateChallengeRequest($request->all());
+            $challenge = $verificationMethod::generateChallenge($data);
+
+            return response()->json($challenge, 201);
+        } catch (DaraufException $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+            ], 422);
+        }
+    }
+
+    public function verifyChallenge(Request $request, string $method): JsonResponse
+    {
+        $verificationMethod = static::CHALLENGE_VERIFIERS[$method] ?? null;
+
+        try {
+            if ($verificationMethod === null) {
+                throw new VerificationMethodNotSupportedException;
+            }
+
+            $data = $verificationMethod::validateVerifyChallengeRequest($request->all());
+
+            if (! $verificationMethod::verifyChallenge($data)) {
+                throw new VerificationFailedException;
+            }
+
+            return response()->json([
+                'message' => __('darauf::messages.success.did_subject_authenticated'),
+            ]);
+        } catch (DaraufException $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+            ], 422);
+        }
+    }
+}
+```
+
+Then point the `challenge/generate/{method}` and `challenge/verify/{method}`
+routes at your controller (register your own route in `routes/api.php` for the
+methods you want to expose) so `Ed25519` is reachable:
+
+```http
+POST /api/darauf/v0.1.1/challenge/generate/Ed25519
+POST /api/darauf/v0.1.1/challenge/verify/Ed25519
+```
+
+Once registered, your custom method is exposed on the existing routes:
+
+```http
+POST /api/darauf/v0.1.1/challenge/generate/Ed25519
+POST /api/darauf/v0.1.1/challenge/verify/Ed25519
+```
+
+Each verifier owns its validation rules, its challenge storage, and its
+signature check, so you can mix and match methods without changing the
+package's controllers.
+
+### Custom verification method types
+
+The `type` field inside a serialized verification method is free-form. You can
+store any W3C DID verification method type — `Ed25519VerificationKey2020`,
+`EcdsaSecp256k1VerificationKey2019`, or a custom type of your own — and pair it
+with a corresponding `ChallengeVerifierContract` registered under that name.
+The package ships with `RSA` out of the box but does not constrain you to it.
+
+## Code Structure
+
+The package follows a conventional Laravel package layout under `src/`:
+
+```text
+darauf/
+├── config/
+│   └── darauf.php                  # Package configuration (merged on register)
+├── database/
+│   └── migrations/                 # darauf_did_documents & darauf_verification_methods
+├── lang/
+│   └── en/                         # Translations (messages, verification method strings)
+├── routes/
+│   └── darauf.php                  # Versioned API routes (v0.1.1)
+├── src/
+│   ├── Console/Commands/           # Artisan commands shipped with the package
+│   ├── Darauf.php                  # Core facade target; createDidDocument() + verifier map
+│   ├── DaraufServiceProvider.php   # Registers config, routes, translations, publishes
+│   ├── Database/Factories/         # Eloquent factories for tests
+│   ├── Exceptions/                 # Domain exceptions (DaraufException subclasses)
+│   ├── Facades/
+│   │   └── Darauf.php              # The public facade
+│   ├── Helpers/
+│   │   └── DidHelper.php           # DID generation & validation helpers
+│   ├── Http/Controllers/           # DidDocumentController & ChallengeController
+│   ├── Models/
+│   │   ├── DidDocument.php         # Represents a stored W3C DID document
+│   │   └── VerificationMethod.php  # Represents a verification method bound to a document
+│   └── VerificationMethods/
+│       ├── ChallengeVerifierContract.php  # Contract for challenge verification
+│       └── RSA/                    # Built-in RSA implementation + its exceptions
+└── tests/                          # Pest + Orchestra Testbench test suite
+```
+
+Key responsibilities:
+
+- **`Darauf`** (`src/Darauf.php`) is the primary programmatic entry point. It
+  owns the `createDidDocument()` method and the `CHALLENGE_VERIFIERS` map that
+  names the available verification methods.
+- **Models** (`src/Models/`) map to the two migrated tables. `DidDocument`
+  stores the serialized JSON document and `hasMany` verification methods;
+  `VerificationMethod` belongs to a `DidDocument`.
+- **Controllers** (`src/Http/Controllers/`) are thin HTTP wrappers around the
+  `Darauf` core, validating requests and mapping exceptions to `422`
+  responses.
+- **`ChallengeVerifierContract`** is the extension seam for verification
+  logic; each implementation owns validation, challenge storage, and signature
+  verification.
 
 ## Testing
 
