@@ -8,20 +8,24 @@ use Clicamal\Darauf\Models\DidDocument;
 use Clicamal\Darauf\Models\VerificationMethod;
 use Illuminate\Database\Eloquent\Factories\Attributes\UseModel;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 #[UseModel(VerificationMethod::class)]
 class VerificationMethodFactory extends Factory
 {
     public function definition(): array
     {
-        $didDocument = DidDocument::factory()->make();
+        $didDocument = DidDocument::factory()->create();
 
         return [
-            'id' => 'did:darauf:'.fake()->asciify('******************************').'#key1',
-            'did_document_did' => $didDocument->did,
-            'controller' => $didDocument->did,
-            'type' => fake()->asciify('***************'),
-            'publicKeyMultibase' => fake()->asciify('******************************'),
+            'verification_method_id' => $didDocument->did_document_id.'#key-1',
+            'did_document_id' => $didDocument->id,
+            'serialized' => json_encode([
+                'id' => $didDocument->did_document_id.'#key-1',
+                'type' => 'RSA',
+                'controller' => $didDocument->did_document_id,
+                'publicKeyMultibase' => 'u'.Str::random(43),
+            ]),
         ];
     }
 }
