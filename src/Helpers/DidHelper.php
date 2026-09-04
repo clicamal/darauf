@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace Clicamal\Darauf\Helpers;
 
 use Clicamal\Darauf\Exceptions\InvalidDidException;
+use Closure;
 use Illuminate\Support\Facades\Validator;
-use Str;
+use Illuminate\Support\Str;
 
 abstract class DidHelper
 {
@@ -38,110 +39,8 @@ abstract class DidHelper
      * Uses a Laravel validator to validate a DID document according to the W3C DID specification.
      * Returns the validated DID document as an array if it passes validation, or throws a ValidationException if it fails.
      *
-     * @param array{
-     *     id: string,
-     *     alsoKnownAs?: array<string>,
-     *     controller?: string|array<string>,
-     *     verificationMethod?: array<array{
-     *         id: string,
-     *         controller: string,
-     *         type: string,
-     *         publicKeyMultibase?: string,
-     *         publicKeyJwk?: array<string, string|array<string>>
-     *     }>,
-     *     authentication?: array<array{
-     *         id: string,
-     *         controller: string,
-     *         type: string,
-     *         publicKeyMultibase?: string,
-     *         publicKeyJwk?: array<string, string|array<string>>
-     *     }>,
-     *     assertionMethod?: array<array{
-     *         id: string,
-     *         controller: string,
-     *         type: string,
-     *         publicKeyMultibase?: string,
-     *         publicKeyJwk?: array<string, string|array<string>>
-     *     }>,
-     *     keyAgreement?: array<array{
-     *         id: string,
-     *         controller: string,
-     *         type: string,
-     *         publicKeyMultibase?: string,
-     *         publicKeyJwk?: array<string, string|array<string>>
-     *     }>,
-     *     capabilityInvocation?: array<array{
-     *         id: string,
-     *         controller: string,
-     *         type: string,
-     *         publicKeyMultibase?: string,
-     *         publicKeyJwk?: array<string, string|array<string>>
-     *     }>,
-     *     capabilityDelegation?: array<array{
-     *         id: string,
-     *         controller: string,
-     *         type: string,
-     *         publicKeyMultibase?: string,
-     *         publicKeyJwk?: array<string, string|array<string>>
-     *     }>,
-     *     service?: array<array{
-     *         id: string,
-     *         type: string|array<string>,
-     *         serviceEndpoint: string|array<string|array<string, mixed>>
-     *     }>
-     * } $didDocument
-     * @return array{
-     *     id: string,
-     *     alsoKnownAs?: array<string>,
-     *     controller?: string|array<string>,
-     *     verificationMethod?: array<array{
-     *         id: string,
-     *         controller: string,
-     *         type: string,
-     *         publicKeyMultibase?: string,
-     *         publicKeyJwk?: array<string, string|array<string>>
-     *     }>,
-     *     authentication?: array<array{
-     *         id: string,
-     *         controller: string,
-     *         type: string,
-     *         publicKeyMultibase?: string,
-     *         publicKeyJwk?: array<string, string|array<string>>
-     *     }>,
-     *     assertionMethod?: array<array{
-     *         id: string,
-     *         controller: string,
-     *         type: string,
-     *         publicKeyMultibase?: string,
-     *         publicKeyJwk?: array<string, string|array<string>>
-     *     }>,
-     *     keyAgreement?: array<array{
-     *         id: string,
-     *         controller: string,
-     *         type: string,
-     *         publicKeyMultibase?: string,
-     *         publicKeyJwk?: array<string, string|array<string>>
-     *     }>,
-     *     capabilityInvocation?: array<array{
-     *         id: string,
-     *         controller: string,
-     *         type: string,
-     *         publicKeyMultibase?: string,
-     *         publicKeyJwk?: array<string, string|array<string>>
-     *     }>,
-     *     capabilityDelegation?: array<array{
-     *         id: string,
-     *         controller: string,
-     *         type: string,
-     *         publicKeyMultibase?: string,
-     *         publicKeyJwk?: array<string, string|array<string>>
-     *     }>,
-     *     service?: array<array{
-     *         id: string,
-     *         type: string|array<string>,
-     *         serviceEndpoint: string|array<string|array<string, mixed>>
-     *     }>
-     * }
+     * @param  array<string, mixed>  $didDocument
+     * @return array<string, mixed>
      */
     public static function validateDidDocument(array $didDocument): array
     {
@@ -151,7 +50,7 @@ abstract class DidHelper
             'alsoKnownAs' => ['sometimes', 'array'],
             'alsoknownAs.*' => ['required_with:alsoKnownAs.*', 'string'],
 
-            'controller' => ['sometimes', function ($attribute, $value, $fail) {
+            'controller' => ['sometimes', function (string $attribute, mixed $value, Closure $fail) {
                 if (is_string($value)) {
                     return;
                 }
@@ -275,7 +174,7 @@ abstract class DidHelper
 
             'service' => ['array'],
             'service.*.id' => ['required_with:service', 'string'],
-            'service.*.type' => [function ($attribute, $value, $fail) {
+            'service.*.type' => [function (string $attribute, mixed $value, Closure $fail) {
                 if (is_string($value)) {
                     return;
                 }
@@ -288,8 +187,8 @@ abstract class DidHelper
                     }
                 }
             }],
-            'service.*.serviceEndpoint' => [function ($attribute, $value, $fail) {
-                $isUri = static function ($endpoint): bool {
+            'service.*.serviceEndpoint' => [function (string $attribute, mixed $value, Closure $fail) {
+                $isUri = static function (mixed $endpoint): bool {
                     return is_string($endpoint)
                         && $endpoint !== ''
                         && preg_match(
@@ -298,7 +197,7 @@ abstract class DidHelper
                         ) === 1;
                 };
 
-                $isValidEndpoint = function ($endpoint) use (&$isValidEndpoint, $isUri): bool {
+                $isValidEndpoint = function (mixed $endpoint) use (&$isValidEndpoint, $isUri): bool {
                     if ($isUri($endpoint)) {
                         return true;
                     }

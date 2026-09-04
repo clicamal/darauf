@@ -10,9 +10,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property-read int $id
+ * @property string $verification_method_id
+ * @property string $did_document_id
+ * @property string $serialized
+ */
 #[UseFactory(VerificationMethodFactory::class)]
 class VerificationMethod extends Model
 {
+    /** @use HasFactory<VerificationMethodFactory> */
     use HasFactory;
 
     protected $table = 'darauf_verification_methods';
@@ -23,6 +30,9 @@ class VerificationMethod extends Model
         'serialized',
     ];
 
+    /**
+     * @return BelongsTo<DidDocument, $this>
+     */
     public function didDocument(): BelongsTo
     {
         return $this->belongsTo(DidDocument::class, 'did_document_id', 'id');

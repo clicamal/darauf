@@ -4,18 +4,23 @@ declare(strict_types=1);
 
 namespace Clicamal\Darauf\VerificationMethods\RSA;
 
-use Cache;
 use Clicamal\Darauf\Exceptions\DidDocumentNotFoundException;
 use Clicamal\Darauf\Exceptions\InvalidDidException;
 use Clicamal\Darauf\Helpers\DidHelper;
 use Clicamal\Darauf\Models\DidDocument;
 use Clicamal\Darauf\VerificationMethods\ChallengeVerifierContract;
 use Clicamal\Darauf\VerificationMethods\RSA\Exceptions\ChallengeNotFoundException;
+use Clicamal\Darauf\VerificationMethods\RSA\Exceptions\InvalidPublicKeyException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Validator;
-use Str;
+use Illuminate\Support\Str;
 
 class RSA implements ChallengeVerifierContract
 {
+    /**
+     * @param  array<string, mixed>  $requestAll
+     * @return array<string, mixed>
+     */
     public static function validateGenerateChallengeRequest(array $requestAll): array
     {
         return Validator::make($requestAll, [
@@ -23,6 +28,10 @@ class RSA implements ChallengeVerifierContract
         ])->validate();
     }
 
+    /**
+     * @param  array<string, mixed>  $requestAll
+     * @return array<string, mixed>
+     */
     public static function validateVerifyChallengeRequest(array $requestAll): array
     {
         return Validator::make($requestAll, [
@@ -34,6 +43,7 @@ class RSA implements ChallengeVerifierContract
     /**
      * Generates a RSA challenge
      *
+     * @param  array<string, mixed>  $data
      * @return array{id: string, string: string}
      */
     public static function generateChallenge(array $data): array
@@ -109,6 +119,10 @@ class RSA implements ChallengeVerifierContract
     private static function toPem(string $multibaseKey): string
     {
         $der = base64_decode(strtr(substr($multibaseKey, 1), '-_', '+/'), true);
+
+        if ($der === false) {
+            throw new InvalidPublicKeyException;
+        }
 
         return "-----BEGIN PUBLIC KEY-----\n".wordwrap(base64_encode($der), 64, "\n", true)."\n-----END PUBLIC KEY-----";
     }

@@ -10,6 +10,9 @@ use Illuminate\Database\Eloquent\Factories\Attributes\UseModel;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
+/**
+ * @extends Factory<VerificationMethod>
+ */
 #[UseModel(VerificationMethod::class)]
 class VerificationMethodFactory extends Factory
 {

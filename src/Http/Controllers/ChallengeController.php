@@ -53,7 +53,7 @@ class ChallengeController extends Controller
             $data = $verificationMethod::validateVerifyChallengeRequest($request->all());
 
             if (! $verificationMethod::verifyChallenge($data)) {
-                throw new VerificationFailedException();
+                throw new VerificationFailedException;
             }
 
             return response()->json([
