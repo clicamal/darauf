@@ -1,35 +1,56 @@
-name: Laravel
+name: Tests
 
 on:
   push:
-    branches: [ "development" ]
+    branches:
+      - development
   pull_request:
-    branches: [ "development" ]
+
+concurrency:
+  group: tests-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  laravel-tests:
-
+  tests:
+    name: PHP ${{ matrix.php }} - Laravel ${{ matrix.laravel }} (${{ matrix.dependency-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        php: [8.3, 8.4]
+        laravel: [12, 13]
+        dependency-version: [prefer-lowest, prefer-stable]
+        include:
+          - laravel: 12
+            testbench: ^10.0
+          - laravel: 13
+            testbench: ^11.0
+        exclude:
+          - php: 8.4
+            dependency-version: prefer-lowest
 
     steps:
-    - uses: shivammathur/setup-php@15c43e89cdef867065b0213be354c2841860869e
-      with:
-        php-version: '8.0'
-    - uses: actions/checkout@v4
-    - name: Copy .env
-      run: php -r "file_exists('.env') || copy('.env.example', '.env');"
-    - name: Install Dependencies
-      run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
-    - name: Generate key
-      run: php artisan key:generate
-    - name: Directory Permissions
-      run: chmod -R 777 storage bootstrap/cache
-    - name: Create Database
-      run: |
-        mkdir -p database
-        touch database/database.sqlite
-    - name: Execute tests (Unit and Feature tests) via PHPUnit/Pest
-      env:
-        DB_CONNECTION: sqlite
-        DB_DATABASE: database/database.sqlite
-      run: php artisan test
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          tools: composer:v2
+
+      - name: Restrict Laravel version for the matrix
+        run: |
+          composer require \
+            "orchestra/testbench:${{ matrix.testbench }}" \
+            --no-interaction --no-update
+
+      - name: Install dependencies
+        uses: ramsey/composer-install@v2
+        with:
+          dependency-versions: ${{ matrix.dependency-version }}
+          composer-options: --prefer-dist
+
+      - name: Run validation suite
+        run: composer test

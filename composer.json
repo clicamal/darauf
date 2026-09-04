@@ -65,9 +65,9 @@
     "lint:check": [
       "vendor/bin/pint --parallel --test"
     ],
-    "analyse": [
-      "vendor/bin/phpstan analyse"
-    ],
+  "analyse": [
+    "vendor/bin/phpstan analyse --memory-limit=-1"
+  ],
     "test:types": [
       "vendor/bin/pest --type-coverage --min=100"
     ],
