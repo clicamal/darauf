@@ -23,8 +23,10 @@ jobs:
         include:
           - laravel: 12
             testbench: ^10.0
+            pest: ^4.6
           - laravel: 13
             testbench: ^11.0
+            pest: ^4.6
         exclude:
           - php: 8.4
             dependency-version: prefer-lowest
@@ -40,10 +42,13 @@ jobs:
           coverage: none
           tools: composer:v2
 
-      - name: Restrict Laravel version for the matrix
+      - name: Restrict Laravel and Pest versions for the matrix
         run: |
           composer require \
             "orchestra/testbench:${{ matrix.testbench }}" \
+            "pestphp/pest:${{ matrix.pest }}" \
+            "pestphp/pest-plugin-laravel:^4.1" \
+            "pestphp/pest-plugin-type-coverage:^4.0" \
             --no-interaction --no-update
 
       - name: Install dependencies
