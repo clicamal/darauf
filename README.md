@@ -29,6 +29,11 @@ signature flow — without coupling your subjects to an `Authenticatable` model.
   included out of the box.
 - Ships with migrations, translations and API routes under a versioned prefix.
 
+> **Note:** `did:web` is not supported yet. The package treats every DID as
+> locally registered — it does **not** resolve a `did:web` identifier by
+> fetching its DID document from the DID's URL.
+
+
 ## Table of Contents
 
 - [Requirements](#requirements)
