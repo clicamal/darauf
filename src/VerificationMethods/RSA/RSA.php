@@ -17,10 +17,6 @@ use Illuminate\Support\Str;
 
 class RSA implements ChallengeVerifierContract
 {
-    /**
-     * @param  array<string, mixed>  $requestAll
-     * @return array<string, mixed>
-     */
     public static function validateGenerateChallengeRequest(array $requestAll): array
     {
         return Validator::make($requestAll, [
@@ -28,10 +24,6 @@ class RSA implements ChallengeVerifierContract
         ])->validate();
     }
 
-    /**
-     * @param  array<string, mixed>  $requestAll
-     * @return array<string, mixed>
-     */
     public static function validateVerifyChallengeRequest(array $requestAll): array
     {
         return Validator::make($requestAll, [
@@ -40,12 +32,6 @@ class RSA implements ChallengeVerifierContract
         ])->validate();
     }
 
-    /**
-     * Generates a RSA challenge
-     *
-     * @param  array<string, mixed>  $data
-     * @return array{id: string, string: string}
-     */
     public static function generateChallenge(array $data): array
     {
         $id = Str::uuid()->toString();
@@ -92,13 +78,6 @@ class RSA implements ChallengeVerifierContract
         ];
     }
 
-    /**
-     * Verifies a RSA challenge verifying a signature against its public key.
-     *
-     * @param  array{challengeId: string, signature: string}  $data
-     *
-     * @throws ChallengeNotFoundException
-     */
     public static function verifyChallenge(array $data): bool
     {
         $challengeId = $data['challengeId'];

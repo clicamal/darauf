@@ -104,7 +104,7 @@ it('rejects a missing didDocumentId in the generate endpoint', function () {
 
 it('registers the named challenge generate route', function () {
     expect(route('darauf.verification.challenge.generate', ['method' => 'RSA']))
-        ->toBe('http://localhost/api/darauf/v0.1.0/challenge/generate/RSA');
+        ->toBe('http://localhost/api/darauf/v0.1.1/challenge/generate/RSA');
 });
 
 it('accepts a valid signature in the verify endpoint', function () {
@@ -161,5 +161,5 @@ it('rejects a missing payload in the verify endpoint', function () {
 
 it('registers the named verify route', function () {
     expect(route('darauf.verification.challenge.verify', ['method' => 'RSA']))
-        ->toBe('http://localhost/api/darauf/v0.1.0/challenge/verify/RSA');
+        ->toBe('http://localhost/api/darauf/v0.1.1/challenge/verify/RSA');
 });

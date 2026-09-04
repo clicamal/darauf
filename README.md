@@ -19,11 +19,14 @@ signature flow — without coupling your subjects to an `Authenticatable` model.
 
 ## Features
 
-- Register a subject and obtain a `did:darauf:*` identifier.
-- Store RSA verification methods bound to the DID document.
-- Issue single-use, expiring challenges (5 minute TTL).
-- Verify an RSA signature against a challenge to prove key possession, at the
+- Register a W3C DID document with its verification methods, persisted as
+  serialized JSON.
+- Issue single-use, expiring challenges (5 minute TTL) for a DID document's RSA
+  verification method.
+- Verify an RSA signature against a challenge to prove key control, at the
   moment of the request (stateless).
+- Pluggable challenge verifier framework (`ChallengeVerifierContract`); RSA is
+  included out of the box.
 - Ships with migrations, translations and API routes under a versioned prefix.
 
 ## Table of Contents
@@ -69,37 +72,28 @@ php artisan vendor:publish --tag="darauf-lang"
 ## Usage
 
 All endpoints are exposed under the versioned API prefix
-`api/darauf/v0.1.0` and use the `api` middleware group.
+`api/darauf/v0.1.1` and use the `api` middleware group.
 
 ### 1. Create a DID document
 
-Register a subject by providing a `username` and an RSA `publicKey` (PEM):
+Submit a W3C DID document. Its `id` becomes the stored DID identifier and its
+`verificationMethod` entries are persisted alongside it. RSA keys are supplied
+using the `publicKeyMultibase` representation:
 
 ```http
-POST /api/darauf/v0.1.0/diddocuments
+POST /api/darauf/v0.1.1/diddocuments
 Content-Type: application/json
 
 {
-    "username": "alice",
-    "publicKey": "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
-}
-```
-
-A successful request returns `201` and stores:
-
-- `darauf_did_documents.did` = `did:darauf:<sha256(username)>`
-- `darauf_verification_methods` — the RSA method bound to that DID.
-
-### 2. Generate a challenge
-
-Request a single-use, expiring challenge for an existing DID:
-
-```http
-POST /api/darauf/v0.1.0/verification/rsa/challenge
-Content-Type: application/json
-
-{
-    "username": "alice"
+    "id": "did:darauf:9c144d1a1f2e3b4c5d6e7f8a9b0cde01f2a3b4c5d6e7f8a9b0cde",
+    "verificationMethod": [
+        {
+            "id": "did:darauf:9c144d1a1f2e3b4c5d6e7f8a9b0cde01f2a3b4c5d6e7f8a9b0cde#key-1",
+            "controller": "did:darauf:9c144d1a1f2e3b4c5d6e7f8a9b0cde01f2a3b4c5d6e7f8a9b0cde",
+            "type": "RSA",
+            "publicKeyMultibase": "z4Mk..."
+        }
+    ]
 }
 ```
 
@@ -107,10 +101,29 @@ A successful request returns `201`:
 
 ```json
 {
-    "challenge": {
-        "challengeId": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
-        "challengeString": "Q8l2fT... (32 random characters)"
-    }
+    "did": "did:darauf:9c144d1a1f2e3b4c5d6e7f8a9b0cde01f2a3b4c5d6e7f8a9b0cde"
+}
+```
+
+### 2. Generate a challenge
+
+Request a single-use, expiring challenge for an existing DID document:
+
+```http
+POST /api/darauf/v0.1.1/challenge/generate/RSA
+Content-Type: application/json
+
+{
+    "didDocumentId": "did:darauf:9c144d1a1f2e3b4c5d6e7f8a9b0cde01f2a3b4c5d6e7f8a9b0cde"
+}
+```
+
+A successful request returns `201`:
+
+```json
+{
+    "id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+    "string": "Q8l2fT... (32 random characters)"
 }
 ```
 
@@ -118,11 +131,11 @@ The challenge expires after 5 minutes and can only be consumed once.
 
 ### 3. Verify a signature
 
-Prove control of the key by signing `challengeString` with the private key and
+Prove control of the key by signing `string` with the private key and
 submitting the base64-encoded signature:
 
 ```http
-POST /api/darauf/v0.1.0/verification/rsa/verify
+POST /api/darauf/v0.1.1/challenge/verify/RSA
 Content-Type: application/json
 
 {
@@ -140,7 +153,7 @@ subject is considered authenticated for that request:
 }
 ```
 
-Otherwise a `401` is returned with a descriptive message.
+Otherwise a `422` is returned with a descriptive message.
 
 ## Testing
 

@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Route;
 
 // Route::get('darauf', fn () => 'Darauf placeholder route.')->name('darauf.placeholder');
 
-Route::prefix('api/darauf/v0.1.0')
+Route::prefix('api/darauf/v0.1.1')
     ->middleware('api')
     ->group(function () {
         Route::post('diddocuments', [DidDocumentController::class, 'register'])->name('darauf.diddocuments.register');

@@ -13,6 +13,11 @@ abstract class DidHelper
 {
     public const string DID_PATTERN = '/^did:[a-z]+:[a-zA-Z0-9._:%-]*[a-zA-Z0-9._-]$/';
 
+    /**
+     * Generates a new DID using a random string and SHA-256 hashing.
+     * The generated DID is in the format "did:darauf:<hash>".
+     * Returns the generated DID as a string.
+     */
     public static function generateDid(): string
     {
         $randomString = Str::random(32);
@@ -28,7 +33,8 @@ abstract class DidHelper
     }
 
     /**
-     * Validates a DID.
+     * Validates a DID against the W3C DID specification using a regular expression.
+     * Returns 1 if the DID is valid, 0 if it is invalid, or false if an error occurred during validation.
      */
     public static function validateDid(string $did): int|bool
     {
