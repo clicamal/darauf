@@ -99,3 +99,13 @@ it('returns 404 for an unknown did:web document', function () {
     $this->get('/api/darauf/v0.1.1/diddocument/user/ghost/did.json')
         ->assertNotFound();
 });
+
+it('rejects a duplicate did document id', function () {
+    $document = didDocumentData();
+
+    $this->postJson(route('darauf.diddocuments.register'), $document)->assertCreated();
+
+    $this->postJson(route('darauf.diddocuments.register'), $document)
+        ->assertUnprocessable()
+        ->assertJsonPath('message', __('darauf::messages.error.duplicated_did'));
+});

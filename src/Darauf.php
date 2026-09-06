@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace Clicamal\Darauf;
 
 use Clicamal\Darauf\Exceptions\DaraufException;
+use Clicamal\Darauf\Exceptions\DuplicatedDidException;
 use Clicamal\Darauf\Models\DidDocument;
 use Clicamal\Darauf\Models\VerificationMethod;
 use Clicamal\Darauf\VerificationMethods\ChallengeVerifierContract;
 use Clicamal\Darauf\VerificationMethods\RSA\RSA;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\DB;
 
 class Darauf
 {
@@ -61,19 +64,25 @@ class Darauf
             throw new DaraufException('Failed to serialize DID document data.');
         }
 
-        $didDocument = DidDocument::create([
-            'did_document_id' => $didDocumentId,
-            'serialized' => $serializedDidDocument,
-        ]);
+        try {
+            return DB::transaction(function () use ($didDocumentId, $serializedDidDocument, $serializedVerificationMethods): DidDocument {
+                $didDocument = DidDocument::create([
+                    'did_document_id' => $didDocumentId,
+                    'serialized' => $serializedDidDocument,
+                ]);
 
-        foreach ($serializedVerificationMethods as $serializedVerificationMethod) {
-            VerificationMethod::create([
-                'verification_method_id' => $serializedVerificationMethod['id'],
-                'did_document_id' => $didDocument->id,
-                'serialized' => $serializedVerificationMethod['serialized'],
-            ]);
+                foreach ($serializedVerificationMethods as $serializedVerificationMethod) {
+                    VerificationMethod::create([
+                        'verification_method_id' => $serializedVerificationMethod['id'],
+                        'did_document_id' => $didDocument->id,
+                        'serialized' => $serializedVerificationMethod['serialized'],
+                    ]);
+                }
+
+                return $didDocument;
+            });
+        } catch (UniqueConstraintViolationException) {
+            throw new DuplicatedDidException;
         }
-
-        return $didDocument;
     }
 }
