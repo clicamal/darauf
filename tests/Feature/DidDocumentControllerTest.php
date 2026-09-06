@@ -80,3 +80,22 @@ it('stores the verification methods serialized', function () {
         ->and(json_decode($method->serialized, true)['type'])->toBe('RSA')
         ->and(json_decode($method->serialized, true)['publicKeyMultibase'])->toStartWith('u');
 });
+
+it('serves a did:web document through the resolution route', function () {
+    $didDocumentId = 'did:web:localhost:user:alice';
+
+    DidDocument::factory()->create([
+        'did_document_id' => $didDocumentId,
+        'serialized' => json_encode(['id' => $didDocumentId, '@context' => ['https://www.w3.org/ns/did/v1']]),
+    ]);
+
+    $this->get('/api/darauf/v0.1.1/diddocument/user/alice/did.json')
+        ->assertOk()
+        ->assertJsonPath('id', $didDocumentId)
+        ->assertJsonPath('@context', ['https://www.w3.org/ns/did/v1']);
+});
+
+it('returns 404 for an unknown did:web document', function () {
+    $this->get('/api/darauf/v0.1.1/diddocument/user/ghost/did.json')
+        ->assertNotFound();
+});

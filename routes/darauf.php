@@ -20,4 +20,8 @@ Route::prefix('api/darauf/v0.1.1')
         Route::post('challenge/verify/{method}', [ChallengeController::class, 'verifyChallenge'])
             ->whereAlphaNumeric('method')
             ->name('darauf.verification.challenge.verify');
+
+        Route::get('{path}/did.json', [DidDocumentController::class, 'getDidWebDocument'])
+            ->where('path', '(\.well-known|diddocument(?:/.+)?)')
+            ->name('darauf.diddocuments.get');
     });

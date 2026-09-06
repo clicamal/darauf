@@ -3,7 +3,10 @@
 declare(strict_types=1);
 
 use Clicamal\Darauf\Exceptions\InvalidDidException;
+use Clicamal\Darauf\Exceptions\InvalidDidWebIdException;
+use Clicamal\Darauf\Exceptions\InvalidDidWebPathException;
 use Clicamal\Darauf\Helpers\DidHelper;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 
 it('generates a did in the correct format', function () {
@@ -109,4 +112,125 @@ it('accepts a did document without verification methods or services', function (
     ];
 
     expect(DidHelper::validateDidDocument($document)['id'])->toBe('did:darauf:test');
+});
+
+it('preserves @context through validation', function () {
+    $document = [
+        '@context' => ['https://www.w3.org/ns/did/v1'],
+        'id' => 'did:darauf:test',
+    ];
+
+    expect(DidHelper::validateDidDocument($document)['@context'])
+        ->toBe(['https://www.w3.org/ns/did/v1']);
+});
+
+it('preserves @context as a string through validation', function () {
+    $document = [
+        '@context' => 'https://www.w3.org/ns/did/v1',
+        'id' => 'did:darauf:test',
+    ];
+
+    expect(DidHelper::validateDidDocument($document)['@context'])
+        ->toBe('https://www.w3.org/ns/did/v1');
+});
+
+it('isDidWeb detects did:web identifiers', function () {
+    expect(DidHelper::isDidWeb('did:web:example.com'))->toBeTrue()
+        ->and(DidHelper::isDidWeb('did:darauf:abc'))->toBeFalse();
+});
+
+it('converts did:web id to a well-known canonical URL', function () {
+    expect(DidHelper::didWebIdToCanonicalUrl('did:web:example.com'))
+        ->toBe('https://example.com/.well-known/did.json');
+});
+
+it('converts did:web id to a path canonical URL', function () {
+    expect(DidHelper::didWebIdToCanonicalUrl('did:web:example.com:user:alice'))
+        ->toBe('https://example.com/user/alice/did.json');
+});
+
+it('converts did:web id with percent-encoded port to a canonical URL', function () {
+    expect(DidHelper::didWebIdToCanonicalUrl('did:web:example.com%3A3000:user'))
+        ->toBe('https://example.com:3000/user/did.json');
+});
+
+it('converts did:web id to a root well-known darauf URL', function () {
+    expect(DidHelper::didWebIdToDaraufUrl('did:web:example.com'))
+        ->toBe('https://example.com/.well-known/did.json');
+});
+
+it('converts did:web id to a path darauf URL', function () {
+    expect(DidHelper::didWebIdToDaraufUrl('did:web:example.com:user:alice'))
+        ->toBe('https://example.com/diddocument/user/alice/did.json');
+});
+
+it('throws when did:web id is malformed', function () {
+    DidHelper::didWebIdToCanonicalUrl('did:web');
+})->throws(InvalidDidWebIdException::class);
+
+it('round-trips a darauf path back to the same did:web id', function () {
+    expect(DidHelper::didWebPathToId('example.com/diddocument/user/alice/did.json'))
+        ->toBe('did:web:example.com:user:alice');
+});
+
+it('converts a well-known resolution path back to a did:web id', function () {
+    expect(DidHelper::didWebPathToId('example.com/.well-known/did.json'))
+        ->toBe('did:web:example.com');
+});
+
+it('converts a path resolution path back to a did:web id', function () {
+    expect(DidHelper::didWebPathToId('example.com/user/alice/did.json'))
+        ->toBe('did:web:example.com:user:alice');
+});
+
+it('throws when resolution path does not end in did.json', function () {
+    DidHelper::didWebPathToId('example.com/user/alice/doc.json');
+})->throws(InvalidDidWebPathException::class);
+
+it('validates well-known resolution path', function () {
+    expect(DidHelper::validateDidWebPath('example.com/.well-known/did.json'))->toBeTrue()
+        ->and(DidHelper::validateDidWebPath('example.com/user/alice/did.json'))->toBeTrue()
+        ->and(DidHelper::validateDidWebPath('example.com/wrong/did.txt'))->toBeFalse()
+        ->and(DidHelper::validateDidWebPath('example.com/user/.well-known/did.json'))->toBeFalse();
+});
+
+it('validateDidWebDocument returns false for a malformed did:web id', function () {
+    expect(DidHelper::validateDidWebDocument(['id' => 'did:web']))->toBeFalse();
+});
+
+it('validateDidWebDocument returns true when remote matches submission', function () {
+    Http::fake([
+        'https://example.com/.well-known/did.json' => Http::response([
+            '@context' => ['https://www.w3.org/ns/did/v1'],
+            'id' => 'did:web:example.com',
+        ]),
+    ]);
+
+    $document = ['id' => 'did:web:example.com', '@context' => ['https://www.w3.org/ns/did/v1']];
+
+    expect(DidHelper::validateDidWebDocument($document))->toBeTrue();
+});
+
+it('validateDidWebDocument returns false when remote differs from submission', function () {
+    Http::fake([
+        'https://example.com/.well-known/did.json' => Http::response([
+            '@context' => ['https://www.w3.org/ns/did/v1'],
+            'id' => 'did:web:example.com',
+        ]),
+    ]);
+
+    $document = ['id' => 'did:web:example.com', '@context' => ['wrong-context']];
+
+    expect(DidHelper::validateDidWebDocument($document))->toBeFalse();
+});
+
+it('validateDidWebDocument rejects private hosts to prevent ssrf', function () {
+    Http::fake();
+
+    expect(DidHelper::validateDidWebDocument(['id' => 'did:web:127.0.0.1']))
+        ->toBeFalse()
+        ->and(DidHelper::validateDidWebDocument(['id' => 'did:web:localhost:user']))
+        ->toBeFalse();
+
+    Http::assertNothingSent();
 });

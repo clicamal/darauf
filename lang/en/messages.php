@@ -6,6 +6,9 @@ return [
     'placeholder' => 'Darauf placeholder translation.',
     'error' => [
         'invalid_did' => 'Invalid DID.',
+        'invalid_did_web_document' => 'Invalid DID Web document.',
+        'invalid_did_web_id' => 'Invalid DID Web ID.',
+        'invalid_did_web_path' => 'Invalid DID Web path.',
         'username_taken' => 'Username already taken.',
         'did_document_not_found' => 'DID document not found.',
         'general_error' => 'Error completing request.',
