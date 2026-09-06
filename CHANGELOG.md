@@ -7,7 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes yet.
+## [v0.1.2] - 2026-09-06
+
+### Added
+
+- `did:web` identifier support. Registering a `did:web` identifier now requires
+  the submitted document to match the document published at the DID's canonical
+  URL; hosts in private or reserved IP ranges are rejected.
+- Resolution of locally registered `did:web` documents via
+  `GET /{path}/did.json` (`diddocument/<path>/did.json` or
+  `.well-known/did.json`), returning the W3C DID document with `200` and `404`
+  for unknown identifiers.
+- DID Web URL helpers (`DidHelper::didWebIdToCanonicalUrl` and
+  `DidHelper::didWebIdToDaraufUrl`) separating canonical URLs from local
+  Darauf URLs.
+- Duplicate DID identifiers are reported with a `DuplicatedDidException`
+  (`422`) instead of a server error.
+
+### Changed
+
+- The `@context` field in DID documents is validated as a string or an array of
+  strings.
+- The RSA challenge request validation no longer constrains field lengths
+  (`max:100` / `max:512` removed).
+- The `challenge/verify` endpoint now responds with `401` when the signature is
+  invalid or the challenge is missing or expired.
+
+### Fixed
+
+- Request validation failures no longer crash the challenge endpoints with a
+  `500`; `ValidationException` is no longer swallowed by a broad catch, so
+  validation errors are reported as `422`.
+- RSA signature verification now only passes on an exact `1` result from
+  `openssl_verify`; an error result (`-1`) was previously treated as a valid
+  signature.
+- `createDidDocument` runs its writes inside a database transaction, so a
+  failure leaves no partial data behind.
+- A DID document without an RSA verification method now throws
+  `RsaVerificationMethodNotFoundException` instead of
+  `ChallengeNotFoundException`.
 
 ## [v0.1.1] - 2026-09-04
 
@@ -56,6 +94,7 @@ Initial release of the Darauf package:
 - Versioned `api/darauf/v0.1.0` API routes under the `api` middleware group.
 - Package service provider and facade.
 
-[Unreleased]: https://github.com/clicamal/darauf/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/clicamal/darauf/compare/v0.1.2...HEAD
+[v0.1.2]: https://github.com/clicamal/darauf/compare/v0.1.1...v0.1.2
 [v0.1.1]: https://github.com/clicamal/darauf/compare/v0.1.0...v0.1.1
 [v0.1.0]: https://github.com/clicamal/darauf/releases/tag/v0.1.0

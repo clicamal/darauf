@@ -27,11 +27,19 @@ signature flow — without coupling your subjects to an `Authenticatable` model.
   moment of the request (stateless).
 - Pluggable challenge verifier framework (`ChallengeVerifierContract`); RSA is
   included out of the box.
+- `did:web` identifiers: registration validates the submitted document against
+  the one published at the DID's canonical URL, and registered documents are
+  served locally through a resolution route.
 - Ships with migrations, translations and API routes under a versioned prefix.
 
-> **Note:** `did:web` is not supported yet. The package treats every DID as
-> locally registered — it does **not** resolve a `did:web` identifier by
-> fetching its DID document from the DID's URL.
+> **`did:web` identifiers:** registering `did:web:example.com:user:alice`
+> requires the submitted document to match the document published at
+> `https://example.com/user/alice/did.json` (or `.well-known/did.json` for a
+> bare host). Once registered, the document is served locally at
+> `GET /api/darauf/v0.1.1/diddocument/user/alice/did.json`, and a
+> `did:web:example.com` is served at
+> `GET /api/darauf/v0.1.1/.well-known/did.json`. Hosts in private or reserved
+> IP ranges are rejected.
 
 
 ## Table of Contents
@@ -116,7 +124,50 @@ A successful request returns `201`:
 }
 ```
 
-### 2. Generate a challenge
+For a `did:web` identifier, the submitted document must also match the
+document published at the identifier's canonical URL, otherwise the request is
+rejected with `422`.
+
+### 2. Resolve a DID Web document
+
+Documents registered under a `did:web` identifier are served locally under the
+`diddocument` path prefix:
+
+```http
+GET /api/darauf/v0.1.1/diddocument/user/alice/did.json
+```
+
+A successful request returns `200` with the W3C DID document:
+
+```json
+{
+    "@context": ["https://www.w3.org/ns/did/v1"],
+    "id": "did:web:example.com:user:alice"
+}
+```
+
+An unknown identifier returns `404`.
+
+### 2.1 Serve documents at their canonical did:web URL
+
+A [did:web resolver](https://w3c-ccg.github.io/did-method-web/) fetches the
+document from the identifier's canonical URL, e.g.
+`https://example.com:8443/user/alice/did.json`. To serve documents there, point
+your web server to redirect those requests to the package route:
+
+```text
+GET https://example.com:8443/user/alice/did.json
+    -> https://example.com/api/darauf/v0.1.1/diddocument/user/alice/did.json
+```
+
+The same applies to a bare host, which resolves under `.well-known`:
+
+```text
+GET https://example.com/.well-known/did.json
+    -> https://example.com/api/darauf/v0.1.1/.well-known/did.json
+```
+
+### 3. Generate a challenge
 
 Request a single-use, expiring challenge for an existing DID document:
 
@@ -140,7 +191,7 @@ A successful request returns `201`:
 
 The challenge expires after 5 minutes and can only be consumed once.
 
-### 3. Verify a signature
+### 4. Verify a signature
 
 Prove control of the key by signing `string` with the private key and
 submitting the base64-encoded signature:
@@ -164,7 +215,7 @@ subject is considered authenticated for that request:
 }
 ```
 
-Otherwise a `422` is returned with a descriptive message.
+Otherwise a `401` is returned with a descriptive message.
 
 ## Customization
 
@@ -418,7 +469,7 @@ darauf/
 │   ├── Facades/
 │   │   └── Darauf.php              # The public facade
 │   ├── Helpers/
-│   │   └── DidHelper.php           # DID generation & validation helpers
+│   │   └── DidHelper.php           # DID and did:web generation, resolution & validation helpers
 │   ├── Http/Controllers/           # DidDocumentController & ChallengeController
 │   ├── Models/
 │   │   ├── DidDocument.php         # Represents a stored W3C DID document
