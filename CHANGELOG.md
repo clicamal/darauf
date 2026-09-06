@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`max:100` / `max:512` removed).
 - The `challenge/verify` endpoint now responds with `401` when the signature is
   invalid or the challenge is missing or expired.
+- The API routes are now served under the `api/darauf/v0.1.2` prefix.
 
 ### Fixed
 
