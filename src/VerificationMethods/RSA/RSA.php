@@ -11,6 +11,7 @@ use Clicamal\Darauf\Models\DidDocument;
 use Clicamal\Darauf\VerificationMethods\ChallengeVerifierContract;
 use Clicamal\Darauf\VerificationMethods\RSA\Exceptions\ChallengeNotFoundException;
 use Clicamal\Darauf\VerificationMethods\RSA\Exceptions\InvalidPublicKeyException;
+use Clicamal\Darauf\VerificationMethods\RSA\Exceptions\RsaVerificationMethodNotFoundException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -20,15 +21,15 @@ class RSA implements ChallengeVerifierContract
     public static function validateGenerateChallengeRequest(array $requestAll): array
     {
         return Validator::make($requestAll, [
-            'didDocumentId' => 'required|string|max:100',
+            'didDocumentId' => 'required|string',
         ])->validate();
     }
 
     public static function validateVerifyChallengeRequest(array $requestAll): array
     {
         return Validator::make($requestAll, [
-            'challengeId' => 'required|string|max:100',
-            'signature' => 'required|string|max:512',
+            'challengeId' => 'required|string',
+            'signature' => 'required|string',
         ])->validate();
     }
 
@@ -54,7 +55,7 @@ class RSA implements ChallengeVerifierContract
             ->first();
 
         if (! $rsaVerificationMethod) {
-            throw new ChallengeNotFoundException;
+            throw new RsaVerificationMethodNotFoundException;
         }
 
         $string = Str::random(32);
@@ -89,7 +90,7 @@ class RSA implements ChallengeVerifierContract
             throw new ChallengeNotFoundException;
         }
 
-        return (bool) openssl_verify($challenge['string'], $signature, self::toPem($challenge['publicKey']));
+        return openssl_verify($challenge['string'], $signature, self::toPem($challenge['publicKey'])) === 1;
     }
 
     /**

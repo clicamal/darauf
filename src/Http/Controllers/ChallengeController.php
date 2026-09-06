@@ -62,7 +62,7 @@ class ChallengeController extends Controller
         } catch (DaraufException $exception) {
             return response()->json([
                 'message' => $exception->getMessage(),
-            ], 422);
+            ], 401);
         }
     }
 }

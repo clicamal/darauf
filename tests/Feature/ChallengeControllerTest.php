@@ -93,7 +93,7 @@ it('rejects a did document id without an rsa verification method', function () {
         'didDocumentId' => 'did:darauf:norsa',
     ])
         ->assertUnprocessable()
-        ->assertJsonPath('message', __('darauf::verification_methods.rsa.challenge_not_found'));
+        ->assertJsonPath('message', __('darauf::verification_methods.rsa.rsa_verification_method_not_found'));
 });
 
 it('rejects a missing didDocumentId in the generate endpoint', function () {
@@ -140,7 +140,7 @@ it('rejects an invalid signature in the verify endpoint', function () {
         'challengeId' => $challenge['id'],
         'signature' => base64_encode($signature),
     ])
-        ->assertUnprocessable()
+        ->assertUnauthorized()
         ->assertJsonPath('message', __('darauf::messages.error.verification_failed'));
 });
 
@@ -149,7 +149,7 @@ it('rejects a challenge that was never generated', function () {
         'challengeId' => 'missing-challenge-id',
         'signature' => base64_encode('signature'),
     ])
-        ->assertUnprocessable()
+        ->assertUnauthorized()
         ->assertJsonPath('message', __('darauf::verification_methods.rsa.challenge_not_found'));
 });
 

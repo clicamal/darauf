@@ -7,6 +7,7 @@ use Clicamal\Darauf\Exceptions\InvalidDidException;
 use Clicamal\Darauf\Models\DidDocument;
 use Clicamal\Darauf\Models\VerificationMethod;
 use Clicamal\Darauf\VerificationMethods\RSA\Exceptions\ChallengeNotFoundException;
+use Clicamal\Darauf\VerificationMethods\RSA\Exceptions\RsaVerificationMethodNotFoundException;
 use Clicamal\Darauf\VerificationMethods\RSA\RSA;
 
 beforeEach(function () {
@@ -78,7 +79,7 @@ it('throws when the did document has no rsa verification method', function () {
     ]);
 
     RSA::generateChallenge(['didDocumentId' => 'did:darauf:nosuchkey']);
-})->throws(ChallengeNotFoundException::class);
+})->throws(RsaVerificationMethodNotFoundException::class);
 
 it('verifies a valid signature', function () {
     $user = unitRsaUser('alice');
