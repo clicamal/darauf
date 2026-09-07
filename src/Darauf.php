@@ -8,26 +8,11 @@ use Clicamal\Darauf\Exceptions\DaraufException;
 use Clicamal\Darauf\Exceptions\DuplicatedDidException;
 use Clicamal\Darauf\Models\DidDocument;
 use Clicamal\Darauf\Models\VerificationMethod;
-use Clicamal\Darauf\VerificationMethods\ChallengeVerifierContract;
-use Clicamal\Darauf\VerificationMethods\RSA\RSA;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 
 class Darauf
 {
-    /**
-     * All the challenge verifiers available in the system, mapped by their names.
-     * Feel free to add more challenge verifiers to this array as needed.
-     *
-     * To add a new challenge verifier, create a class that implements the
-     * ChallengeVerifierContract interface and add it to this array with a unique name.
-     *
-     * @var array<string, class-string<ChallengeVerifierContract>>
-     */
-    public const array CHALLENGE_VERIFIERS = [
-        'RSA' => RSA::class,
-    ];
-
     /**
      * Creates a new DID document and its associated verification methods in the database.
      *

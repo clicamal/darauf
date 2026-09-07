@@ -13,9 +13,10 @@ it('returns the same instance from the container', function () {
 });
 
 it('merges the package config', function () {
-    expect(config('darauf.placeholder'))->toBe('default');
+    expect(config('darauf.challengeManagers'))->toBeArray()
+        ->and(config('darauf.challengeManagers'))->toHaveKey('Multikey|Ed25519VerificationKey2020');
 });
 
 it('loads the package translations', function () {
-    expect(trans('darauf::messages.placeholder'))->toBe('Darauf placeholder translation.');
+    expect(trans('darauf::messages.error.verification_failed'))->toBe('Verification failed.');
 });

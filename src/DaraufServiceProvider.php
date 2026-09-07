@@ -16,6 +16,12 @@ class DaraufServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/darauf.php', 'darauf');
 
         $this->app->singleton(Darauf::class);
+
+        foreach (config('darauf.challengeManagers', []) as $name => $class) {
+            foreach (explode('|', $name) as $verificationMethodType) {
+                $this->app->bind("darauf.challengeManagers.{$verificationMethodType}", $class);
+            }
+        }
     }
 
     /**
@@ -30,6 +36,10 @@ class DaraufServiceProvider extends ServiceProvider
         if (! $this->app->runningInConsole()) {
             return;
         }
+
+        $this->publishes([
+            __DIR__.'/../config/darauf.php' => config_path('darauf.php'),
+        ], ['darauf', 'darauf-config']);
 
         $this->publishes([
             __DIR__.'/../lang' => $this->app->langPath('vendor/darauf'),

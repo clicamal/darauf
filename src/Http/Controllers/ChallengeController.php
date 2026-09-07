@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace Clicamal\Darauf\Http\Controllers;
 
-use Clicamal\Darauf\Darauf;
 use Clicamal\Darauf\Exceptions\DaraufException;
 use Clicamal\Darauf\Exceptions\VerificationFailedException;
-use Clicamal\Darauf\Exceptions\VerificationMethodNotSupportedException;
+use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -19,19 +18,21 @@ class ChallengeController extends Controller
      */
     public function generateChallenge(Request $request, string $method): JsonResponse
     {
-        $verificationMethod = Darauf::CHALLENGE_VERIFIERS[$method] ?? null;
-
         try {
-            if ($verificationMethod === null) {
-                throw new VerificationMethodNotSupportedException;
-            }
+            $challengeManager = app("darauf.challengeManagers.{$method}");
 
-            $data = $verificationMethod::validateGenerateChallengeRequest($request->all());
+            $data = $challengeManager->getGenerateChallengeRequestValidator($request->all())->validate();
 
-            $challenge = $verificationMethod::generateChallenge($data);
+            $challenge = $challengeManager->generateChallenge($data);
 
             return response()->json($challenge, 201);
-        } catch (DaraufException $exception) {
+        } catch (DaraufException|BindingResolutionException $exception) {
+            if ($exception instanceof BindingResolutionException) {
+                return response()->json([
+                    'message' => __('darauf::messages.error.verification_method_not_supported'),
+                ], 422);
+            }
+
             return response()->json([
                 'message' => $exception->getMessage(),
             ], 422);
@@ -43,23 +44,25 @@ class ChallengeController extends Controller
      */
     public function verifyChallenge(Request $request, string $method): JsonResponse
     {
-        $verificationMethod = Darauf::CHALLENGE_VERIFIERS[$method] ?? null;
-
         try {
-            if ($verificationMethod === null) {
-                throw new VerificationMethodNotSupportedException;
-            }
+            $challengeManager = app("darauf.challengeManagers.{$method}");
 
-            $data = $verificationMethod::validateVerifyChallengeRequest($request->all());
+            $data = $challengeManager->getValidateChallengeRequestValidator($request->all())->validate();
 
-            if (! $verificationMethod::verifyChallenge($data)) {
+            if (! $challengeManager->verifyChallenge($data)) {
                 throw new VerificationFailedException;
             }
 
             return response()->json([
                 'message' => __('darauf::messages.success.did_subject_authenticated'),
             ]);
-        } catch (DaraufException $exception) {
+        } catch (DaraufException|BindingResolutionException $exception) {
+            if ($exception instanceof BindingResolutionException) {
+                return response()->json([
+                    'message' => __('darauf::messages.error.verification_method_not_supported'),
+                ], 422);
+            }
+
             return response()->json([
                 'message' => $exception->getMessage(),
             ], 401);

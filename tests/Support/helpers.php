@@ -19,6 +19,16 @@ function rsaKeyPair(): array
     ];
 }
 
+function ed25519KeyPair(): array
+{
+    $keypair = sodium_crypto_sign_keypair();
+
+    return [
+        'private' => sodium_crypto_sign_secretkey($keypair),
+        'publicKeyMultibase' => 'u'.base64url_encode(sodium_crypto_sign_publickey($keypair)),
+    ];
+}
+
 function didDocumentData(string $did = 'did:darauf:test', array $overrides = []): array
 {
     return array_replace_recursive([

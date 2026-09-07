@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Clicamal\Darauf\VerificationMethods\RSA\RSA;
+use Clicamal\Darauf\ChallengeManagers\Ed25519\Ed25519ChallengeManager;
 use Illuminate\Validation\ValidationException;
 
 it('validates a generate challenge request', function () {
@@ -10,15 +10,16 @@ it('validates a generate challenge request', function () {
         'didDocumentId' => 'did:darauf:alice',
     ];
 
-    expect(RSA::validateGenerateChallengeRequest($request))->toBe($request);
+    expect(app(Ed25519ChallengeManager::class)->getGenerateChallengeRequestValidator($request)->validated())
+        ->toBe($request);
 });
 
 it('rejects a generate challenge request without a did document id', function () {
-    RSA::validateGenerateChallengeRequest([]);
+    app(Ed25519ChallengeManager::class)->getGenerateChallengeRequestValidator([])->validate();
 })->throws(ValidationException::class);
 
 it('rejects a generate challenge request with a non-string did document id', function () {
-    RSA::validateGenerateChallengeRequest(['didDocumentId' => 123]);
+    app(Ed25519ChallengeManager::class)->getGenerateChallengeRequestValidator(['didDocumentId' => 123])->validate();
 })->throws(ValidationException::class);
 
 it('validates a verify challenge request', function () {
@@ -27,13 +28,14 @@ it('validates a verify challenge request', function () {
         'signature' => 'signature',
     ];
 
-    expect(RSA::validateVerifyChallengeRequest($request))->toBe($request);
+    expect(app(Ed25519ChallengeManager::class)->getValidateChallengeRequestValidator($request)->validated())
+        ->toBe($request);
 });
 
 it('rejects a verify challenge request without a challenge id', function () {
-    RSA::validateVerifyChallengeRequest(['signature' => 'signature']);
+    app(Ed25519ChallengeManager::class)->getValidateChallengeRequestValidator(['signature' => 'signature'])->validate();
 })->throws(ValidationException::class);
 
 it('rejects a verify challenge request without a signature', function () {
-    RSA::validateVerifyChallengeRequest(['challengeId' => 'challenge-id']);
+    app(Ed25519ChallengeManager::class)->getValidateChallengeRequestValidator(['challengeId' => 'challenge-id'])->validate();
 })->throws(ValidationException::class);
