@@ -65,7 +65,7 @@ it('rejects a verification method without an id', function () {
 
 it('registers the named did document route', function () {
     expect(route('darauf.diddocuments.register'))
-        ->toBe('http://localhost/api/darauf/v0.1.2/diddocuments');
+        ->toBe('http://localhost/api/darauf/v0.1.3/diddocuments');
 });
 
 it('stores the verification methods serialized', function () {
@@ -89,14 +89,14 @@ it('serves a did:web document through the resolution route', function () {
         'serialized' => json_encode(['id' => $didDocumentId, '@context' => ['https://www.w3.org/ns/did/v1']]),
     ]);
 
-    $this->get('/api/darauf/v0.1.2/diddocument/user/alice/did.json')
+    $this->get('/api/darauf/v0.1.3/diddocument/user/alice/did.json')
         ->assertOk()
         ->assertJsonPath('id', $didDocumentId)
         ->assertJsonPath('@context', ['https://www.w3.org/ns/did/v1']);
 });
 
 it('returns 404 for an unknown did:web document', function () {
-    $this->get('/api/darauf/v0.1.2/diddocument/user/ghost/did.json')
+    $this->get('/api/darauf/v0.1.3/diddocument/user/ghost/did.json')
         ->assertNotFound();
 });
 

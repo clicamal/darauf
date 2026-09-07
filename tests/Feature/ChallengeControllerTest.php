@@ -104,7 +104,7 @@ it('rejects an unsupported verification method', function () {
 
 it('registers the named challenge generate route', function () {
     expect(route('darauf.verification.challenge.generate', ['method' => 'Ed25519VerificationKey2020']))
-        ->toBe('http://localhost/api/darauf/v0.1.2/challenge/generate/Ed25519VerificationKey2020');
+        ->toBe('http://localhost/api/darauf/v0.1.3/challenge/generate/Ed25519VerificationKey2020');
 });
 
 it('accepts a valid signature in the verify endpoint', function () {
@@ -161,5 +161,5 @@ it('rejects a missing payload in the verify endpoint', function () {
 
 it('registers the named verify route', function () {
     expect(route('darauf.verification.challenge.verify', ['method' => 'Ed25519VerificationKey2020']))
-        ->toBe('http://localhost/api/darauf/v0.1.2/challenge/verify/Ed25519VerificationKey2020');
+        ->toBe('http://localhost/api/darauf/v0.1.3/challenge/verify/Ed25519VerificationKey2020');
 });

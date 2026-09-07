@@ -38,9 +38,9 @@ signature flow — without coupling your subjects to an `Authenticatable` model.
 > requires the submitted document to match the document published at
 > `https://example.com/user/alice/did.json` (or `.well-known/did.json` for a
 > bare host). Once registered, the document is served locally at
-> `GET /api/darauf/v0.1.2/diddocument/user/alice/did.json`, and a
+> `GET /api/darauf/v0.1.3/diddocument/user/alice/did.json`, and a
 > `did:web:example.com` is served at
-> `GET /api/darauf/v0.1.2/.well-known/did.json`. Hosts in private or reserved
+> `GET /api/darauf/v0.1.3/.well-known/did.json`. Hosts in private or reserved
 > IP ranges are rejected.
 
 
@@ -102,7 +102,7 @@ php artisan vendor:publish --tag="darauf-lang"
 ## Usage
 
 All endpoints are exposed under the versioned API prefix
-`api/darauf/v0.1.2` and use the `api` middleware group.
+`api/darauf/v0.1.3` and use the `api` middleware group.
 
 ### 1. Create a DID document
 
@@ -111,7 +111,7 @@ Submit a W3C DID document. Its `id` becomes the stored DID identifier and its
 using the `publicKeyMultibase` representation:
 
 ```http
-POST /api/darauf/v0.1.2/diddocuments
+POST /api/darauf/v0.1.3/diddocuments
 Content-Type: application/json
 
 {
@@ -145,7 +145,7 @@ Documents registered under a `did:web` identifier are served locally under the
 `diddocument` path prefix:
 
 ```http
-GET /api/darauf/v0.1.2/diddocument/user/alice/did.json
+GET /api/darauf/v0.1.3/diddocument/user/alice/did.json
 ```
 
 A successful request returns `200` with the W3C DID document:
@@ -168,14 +168,14 @@ your web server to redirect those requests to the package route:
 
 ```text
 GET https://example.com:8443/user/alice/did.json
-    -> https://example.com/api/darauf/v0.1.2/diddocument/user/alice/did.json
+    -> https://example.com/api/darauf/v0.1.3/diddocument/user/alice/did.json
 ```
 
 The same applies to a bare host, which resolves under `.well-known`:
 
 ```text
 GET https://example.com/.well-known/did.json
-    -> https://example.com/api/darauf/v0.1.2/.well-known/did.json
+    -> https://example.com/api/darauf/v0.1.3/.well-known/did.json
 ```
 
 ### 3. Generate a challenge
@@ -185,7 +185,7 @@ Request a single-use, expiring challenge for an existing DID document. The
 `config/darauf.php`:
 
 ```http
-POST /api/darauf/v0.1.2/challenge/generate/Ed25519VerificationKey2020
+POST /api/darauf/v0.1.3/challenge/generate/Ed25519VerificationKey2020
 Content-Type: application/json
 
 {
@@ -210,7 +210,7 @@ Prove control of the key by signing `string` with the private key and
 submitting the base64-encoded signature:
 
 ```http
-POST /api/darauf/v0.1.2/challenge/verify/Ed25519VerificationKey2020
+POST /api/darauf/v0.1.3/challenge/verify/Ed25519VerificationKey2020
 Content-Type: application/json
 
 {
@@ -381,8 +381,8 @@ signature check, so you can mix and match methods without changing the
 package's controllers:
 
 ```http
-POST /api/darauf/v0.1.2/challenge/generate/EcdsaSecp256k1VerificationKey2019
-POST /api/darauf/v0.1.2/challenge/verify/EcdsaSecp256k1VerificationKey2019
+POST /api/darauf/v0.1.3/challenge/generate/EcdsaSecp256k1VerificationKey2019
+POST /api/darauf/v0.1.3/challenge/verify/EcdsaSecp256k1VerificationKey2019
 ```
 
 ### Custom verification method types
@@ -406,7 +406,7 @@ darauf/
 ├── lang/
 │   └── en/                         # Translations (messages, verification method strings)
 ├── routes/
-│   └── darauf.php                  # Versioned API routes (v0.1.2)
+│   └── darauf.php                  # Versioned API routes (v0.1.3)
 ├── src/
 │   ├── Console/Commands/           # Artisan commands shipped with the package
 │   ├── ChallengeManagers/          # Challenge manager contract + Ed25519 implementation
