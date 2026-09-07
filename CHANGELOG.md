@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.1.3] - 2026-09-07
+
+### Added
+
+- Configurable challenge managers: `ChallengeManagerContract` implementations
+  are registered in a publishable `config/darauf.php` under
+  `challengeManagers`, keyed by DID verification method type, and bound to the
+  container by the service provider.
+- An out-of-the-box `Ed25519ChallengeManager` that resolves the public key from
+  the serialized verification method's `publicKeyMultibase` (multibase base64)
+  or `publicKeyJwk`, and verifies signatures with `sodium_crypto_sign_verify_detached`.
+- `ChallengeNotFoundException`, `ChallengeGenerationFailedException` and
+  `InvalidPublicKeyException` domain exceptions with `messages.error.*`
+  translations.
+
+### Changed
+
+- The static `Darauf::CHALLENGE_VERIFIERS` map and the RSA verifier framework
+  are replaced by container-bound challenge managers; the `ChallengeController`
+  resolves a manager by method name
+  (`darauf.challengeManagers.{method}`), so new methods need no package changes.
+- Challenge managers are registered for both the `Multikey` and
+  `Ed25519VerificationKey2020` DID verification method types, reachable on the
+  existing `challenge/generate/{method}` and `challenge/verify/{method}` routes.
+- A DID document without a matching Ed25519 verification method now throws a
+  manager-specific `VerificationMethodNotFoundException` instead of the RSA one.
+- The `serialized` columns are no longer cast to arrays on the models, so the
+  stored JSON round-trips through `whereJsonContains` queries.
+
+### Removed
+
+- The RSA verifier (`VerificationMethods/RSA`), its `ChallengeVerifierContract`,
+  exceptions and the `verification_methods/rsa` translations.
+
 ## [v0.1.2] - 2026-09-06
 
 ### Added
@@ -95,7 +129,8 @@ Initial release of the Darauf package:
 - Versioned `api/darauf/v0.1.0` API routes under the `api` middleware group.
 - Package service provider and facade.
 
-[Unreleased]: https://github.com/clicamal/darauf/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/clicamal/darauf/compare/v0.1.3...HEAD
+[v0.1.3]: https://github.com/clicamal/darauf/compare/v0.1.2...v0.1.3
 [v0.1.2]: https://github.com/clicamal/darauf/compare/v0.1.1...v0.1.2
 [v0.1.1]: https://github.com/clicamal/darauf/compare/v0.1.0...v0.1.1
 [v0.1.0]: https://github.com/clicamal/darauf/releases/tag/v0.1.0
