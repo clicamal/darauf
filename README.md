@@ -18,6 +18,10 @@ verification methods through pluggable resolvers, and prove control of a key
 through a challenge / signature flow — without coupling your subjects to an
 `Authenticatable` model.
 
+> **Experimental:** Darauf is in an early, experimental phase. The public API,
+> routes, storage format and behavior may change drastically between versions
+> without notice.
+
 ## Features
 
 - Register a W3C DID document, persisted as serialized JSON and structurally
@@ -93,7 +97,7 @@ php artisan vendor:publish --tag="darauf-lang"
 ## Usage
 
 All endpoints are exposed under the versioned API prefix
-`api/darauf/v0.1.3` and use the `api` middleware group.
+`api/darauf/v0.1.4` and use the `api` middleware group.
 
 ### 1. Create a DID document
 
@@ -103,7 +107,7 @@ Keys are supplied using the `publicKeyMultibase` or `publicKeyJwk`
 representation:
 
 ```http
-POST /api/darauf/v0.1.3/diddocuments
+POST /api/darauf/v0.1.4/diddocuments
 Content-Type: application/json
 
 {
@@ -134,7 +138,7 @@ authentication member. The `didUrl` is dereferenced through the resolver
 registered for the DID's method (for example `did:web:example.com:user:alice#key-1`):
 
 ```http
-POST /api/darauf/v0.1.3/challenge/generate
+POST /api/darauf/v0.1.4/challenge/generate
 Content-Type: application/json
 
 {
@@ -159,7 +163,7 @@ Prove control of the key by signing `nonce` with the private key and submitting
 the base64-encoded signature:
 
 ```http
-POST /api/darauf/v0.1.3/challenge/verify
+POST /api/darauf/v0.1.4/challenge/verify
 Content-Type: application/json
 
 {
@@ -351,7 +355,7 @@ darauf/
 ├── lang/
 │   └── en/                         # Translations (messages.error.*, messages.success.*)
 ├── routes/
-│   └── darauf.php                  # Versioned API routes (v0.1.3)
+│   └── darauf.php                  # Versioned API routes (v0.1.4)
 ├── src/
 │   ├── ChallengeManagers/          # Challenge manager contract + Ed25519 implementation
 │   │   ├── ChallengeManagerContract.php
