@@ -65,7 +65,7 @@ it('rejects a verification method without an id', function () {
 
 it('registers the named did document route', function () {
     expect(route('darauf.diddocuments.register'))
-        ->toBe('http://localhost/api/darauf/v0.1.3/diddocuments');
+        ->toBe('http://localhost/api/darauf/v0.1.4/diddocuments');
 });
 
 it('stores the verification methods serialized', function () {

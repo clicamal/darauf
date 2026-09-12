@@ -107,7 +107,7 @@ it('rejects a missing didUrl in the generate endpoint', function () {
 
 it('registers the named generate route without a method segment', function () {
     expect(route('darauf.challenge.generate'))
-        ->toBe('http://localhost/api/darauf/v0.1.3/challenge/generate');
+        ->toBe('http://localhost/api/darauf/v0.1.4/challenge/generate');
 });
 
 it('accepts a valid signature in the verify endpoint', function () {
@@ -180,5 +180,5 @@ it('rejects a missing payload in the verify endpoint', function () {
 
 it('registers the named verify route without a method segment', function () {
     expect(route('darauf.challenge.verify'))
-        ->toBe('http://localhost/api/darauf/v0.1.3/challenge/verify');
+        ->toBe('http://localhost/api/darauf/v0.1.4/challenge/verify');
 });
