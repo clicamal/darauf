@@ -5,133 +5,125 @@ declare(strict_types=1);
 namespace Clicamal\Darauf\ChallengeManagers\Ed25519;
 
 use Clicamal\Darauf\ChallengeManagers\ChallengeManagerContract;
-use Clicamal\Darauf\ChallengeManagers\Ed25519\Exceptions\VerificationMethodNotFoundException;
-use Clicamal\Darauf\Exceptions\ChallengeGenerationFailedException;
-use Clicamal\Darauf\Exceptions\ChallengeNotFoundException;
-use Clicamal\Darauf\Exceptions\DidDocumentNotFoundException;
-use Clicamal\Darauf\Exceptions\InvalidPublicKeyException;
-use Clicamal\Darauf\Models\DidDocument;
-use Illuminate\Contracts\Validation\Validator;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Validator as ValidatorFacade;
-use Illuminate\Support\Str;
+use Clicamal\Darauf\Exceptions\ChallengeManagementException;
+use Clicamal\Darauf\Models\Authentication;
+use Clicamal\Darauf\Models\VerificationMethod;
 
 class Ed25519ChallengeManager implements ChallengeManagerContract
 {
-    public function getGenerateChallengeRequestValidator(array $requestAll): Validator
+    public function verify(string $signature, string $nonce, VerificationMethod|Authentication $resource): bool
     {
-        return ValidatorFacade::make($requestAll, [
-            'didDocumentId' => 'required|string',
-        ]);
-    }
+        $decodedSignature = base64_decode(strtr($signature, '-_', '+/'), true);
 
-    public function getValidateChallengeRequestValidator(array $requestAll): Validator
-    {
-        return ValidatorFacade::make($requestAll, [
-            'challengeId' => 'required|string',
-            'signature' => 'required|string',
-        ]);
-    }
-
-    public function generateChallenge(array $data): array
-    {
-        $didDocument = DidDocument::where('did_document_id', $data['didDocumentId'])->first();
-
-        if (! $didDocument) {
-            throw new DidDocumentNotFoundException;
+        if (! is_string($decodedSignature) || $decodedSignature === '') {
+            return false;
         }
 
-        $verificationMethod = $didDocument->verificationMethods()
-            ->where(fn (Builder $query) => $query
-                ->whereJsonContains('serialized->type', 'Multikey')
-                ->orWhereJsonContains('serialized->type', 'Ed25519VerificationKey2020'))
-            ->first();
+        $publicKey = match (true) {
+            isset($resource->publicKeyMultibase) => $this->multibaseToEd25519($resource->publicKeyMultibase),
+            isset($resource->publicKeyJwk) => $this->jwkToEd25519($resource->publicKeyJwk),
+            default => throw new ChallengeManagementException('invalid_verification_method'),
+        };
 
-        if (! $verificationMethod) {
-            throw new VerificationMethodNotFoundException;
-        }
-
-        $serialized = json_decode($verificationMethod->serialized, true);
-
-        $publicKey = $serialized['publicKeyMultibase'] ?? null;
-
-        if (is_string($publicKey)) {
-            $publicKey = $this->multibaseToEd25519($publicKey);
-        } else {
-            $publicKey = $this->jwkToEd25519($serialized['publicKeyJwk'] ?? []);
-        }
-
-        $challengeId = Str::uuid()->toString();
-        $challenge = Str::random(32);
-
-        if (! Cache::put("darauf_ed25519_challenge:{$challengeId}", [
-            'string' => $challenge,
-            'publicKey' => $publicKey,
-        ], now()->addMinutes(5))) {
-            throw new ChallengeGenerationFailedException;
-        }
-
-        return [
-            'id' => $challengeId,
-            'string' => $challenge,
-        ];
-    }
-
-    public function verifyChallenge(array $data): bool
-    {
-        $challenge = Cache::pull("darauf_ed25519_challenge:{$data['challengeId']}");
-
-        if ($challenge === null) {
-            throw new ChallengeNotFoundException;
-        }
-
-        $signature = base64_decode($data['signature'] ?? '', true);
-
-        if ($signature === false || $signature === '') {
-            throw new InvalidPublicKeyException;
-        }
-
-        return sodium_crypto_sign_verify_detached($signature, $challenge['string'], $challenge['publicKey']);
+        return sodium_crypto_sign_verify_detached($decodedSignature, $nonce, $publicKey);
     }
 
     /**
-     * Converts a multibase encoded Ed25519 public key to the raw 32-byte key.
+     * @return non-empty-string
      */
-    private function multibaseToEd25519(string $multibaseKey): string
+    private function multibaseToEd25519(?string $multibase): string
     {
-        $decoded = base64_decode(strtr(substr($multibaseKey, 1), '-_', '+/'), true);
-
-        if ($decoded === false || strlen($decoded) !== 32) {
-            throw new InvalidPublicKeyException;
+        if ($multibase === null || $multibase === '') {
+            throw new ChallengeManagementException('invalid_multibase_key');
         }
 
-        return $decoded;
+        $decoded = match ($multibase[0]) {
+            'z' => $this->base58Decode(substr($multibase, 1)),
+            'u' => base64_decode(strtr(substr($multibase, 1), '-_', '+/'), true),
+            default => null,
+        };
+
+        $key = is_string($decoded) && (strlen($decoded) === 32
+            || (strlen($decoded) === 34 && str_starts_with($decoded, "\xed\x01")))
+            ? substr($decoded, -32)
+            : null;
+
+        return $key ?? throw new ChallengeManagementException('invalid_multibase_key');
     }
 
     /**
-     * Converts a JSON Web Key to the raw 32-byte Ed25519 public key.
-     *
      * @param  array<string, mixed>  $jwk
+     * @return non-empty-string
      */
-    private function jwkToEd25519(array $jwk): string
+    private function jwkToEd25519(?array $jwk): string
     {
-        if (($jwk['kty'] ?? null) !== 'OKP' || ($jwk['crv'] ?? null) !== 'Ed25519') {
-            throw new InvalidPublicKeyException;
+        $key = ($jwk['kty'] ?? null) === 'OKP'
+            && ($jwk['crv'] ?? null) === 'Ed25519'
+            && is_string($jwk['x'] ?? null)
+            ? base64_decode(strtr($jwk['x'], '-_', '+/'), true)
+            : null;
+
+        return is_string($key) && strlen($key) === 32
+            ? $key
+            : throw new ChallengeManagementException('invalid_jwk');
+    }
+
+    /**
+     * Decodes a base58btc encoded string.
+     */
+    private function base58Decode(string $base58): string
+    {
+        if ($base58 === '') {
+            throw new ChallengeManagementException('invalid_multibase_key');
         }
 
-        $x = $jwk['x'] ?? null;
+        $alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 
-        if (! is_string($x)) {
-            throw new InvalidPublicKeyException;
+        $leadingZeros = 0;
+
+        foreach (str_split($base58) as $char) {
+            if ($char !== '1') {
+                break;
+            }
+
+            $leadingZeros++;
         }
 
-        $decoded = base64_decode(strtr($x, '-_', '+/'), true);
+        $digits = [0];
 
-        if ($decoded === false || strlen($decoded) !== 32) {
-            throw new InvalidPublicKeyException;
+        foreach (str_split($base58) as $char) {
+            $carry = strpos($alphabet, $char);
+
+            if ($carry === false) {
+                throw new ChallengeManagementException('invalid_multibase_key');
+            }
+
+            for ($i = count($digits) - 1; $i >= 0; $i--) {
+                $carry += $digits[$i] * 58;
+                $digits[$i] = $carry % 256;
+                $carry = intdiv($carry, 256);
+            }
+
+            while ($carry > 0) {
+                array_unshift($digits, $carry % 256);
+                $carry = intdiv($carry, 256);
+            }
         }
 
-        return $decoded;
+        while (count($digits) > 1 && $digits[0] === 0) {
+            array_shift($digits);
+        }
+
+        $isZero = count($digits) === 1 && $digits[0] === 0;
+
+        $prefixZeros = $isZero ? max(0, $leadingZeros - 1) : $leadingZeros;
+
+        $result = str_repeat("\x00", $prefixZeros);
+
+        foreach ($digits as $digit) {
+            $result .= chr(min(255, max(0, $digit)));
+        }
+
+        return $result;
     }
 }

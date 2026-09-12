@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Pluggable DID resolvers: `DidResolverContract` implementations are registered
+  in `config/darauf.php` under `didResolvers`, keyed by DID method, and selected
+  per request by `DidResolverDelegator`. A built-in `did:web` resolver fetches
+  documents from their canonical URLs.
+- `DidDomainModel` and `DidUrlDomainModel` value objects and a static
+  `DidValidator` for structured DID document validation.
+- An `Authentication` model, migration, factory and `hasMany` relation,
+  populated from the `authentication` members of a registered document.
+- A shared `HasSerializedPayload` model concern exposing `payload`, `type`,
+  `publicKeyMultibase` and `publicKeyJwk` accessors over the `serialized` JSON
+  columns, now used across the resolvers, controllers and challenge managers.
+
+### Changed
+
+- The challenge flow now targets a DID URL: `challenge/generate` takes a
+  `didUrl`, dereferences it to a verification method or authentication member,
+  and returns a single-use `challengeId` and `nonce`; `challenge/verify`
+  checks the submitted `signature` over the `nonce` against the dereferenced
+  resource's public key on the same routes, without a per-method URL segment.
+- `ChallengeManagerContract` is reduced to `verify()`; managers receive the
+  dereferenced resource model and no longer own request validation or challenge
+  storage.
+- `POST /diddocuments` returns a success message; the serialized payload is
+  structurally validated on save and its `verificationMethod` and
+  `authentication` members are persisted automatically by the model hooks.
+- Document registration happens through the `DidDocument` model; the
+  `Darauf` core class is downgraded to the container singleton backing the
+  facade.
+- Deserialization of the `serialized` columns is centralized in the
+  `HasSerializedPayload` concern instead of ad-hoc `json_decode` calls.
+
+### Removed
+
+- The `Darauf::createDidDocument()` API, the `DidHelper` helper class, the
+  per-error exception subclasses and the local `diddocument/<path>/did.json`
+  resolution route for registered `did:web` documents.
+
 ## [v0.1.3] - 2026-09-07
 
 ### Added

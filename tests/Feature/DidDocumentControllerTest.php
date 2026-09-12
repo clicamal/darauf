@@ -17,7 +17,7 @@ it('creates a did document with its verification method', function () {
     $response = $this->postJson(route('darauf.diddocuments.register'), $document);
 
     $response->assertCreated()
-        ->assertJsonPath('did', $document['id']);
+        ->assertJsonPath('message', __('darauf::messages.success.did_document_registered'));
 
     $this->assertDatabaseHas('darauf_did_documents', [
         'did_document_id' => $document['id'],
@@ -29,7 +29,7 @@ it('creates a did document with its verification method', function () {
 
     $persisted = DidDocument::where('did_document_id', $document['id'])->first();
 
-    expect(json_decode($persisted->serialized, true)['id'])->toBe($document['id'])
+    expect($persisted->payload['id'])->toBe($document['id'])
         ->and($persisted->verificationMethods)->toHaveCount(1);
 });
 
@@ -58,7 +58,7 @@ it('rejects a verification method without an id', function () {
 
     $this->postJson(route('darauf.diddocuments.register'), $document)
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['verificationMethod.0.id']);
+        ->assertJsonPath('message', __('darauf::messages.error.invalid_did_document'));
 
     $this->assertDatabaseCount(DidDocument::class, 0);
 });
@@ -76,28 +76,36 @@ it('stores the verification methods serialized', function () {
     $persisted = DidDocument::where('did_document_id', $document['id'])->first();
     $method = $persisted->verificationMethods()->first();
 
-    expect(json_decode($method->serialized, true)['id'])->toBe($document['verificationMethod'][0]['id'])
-        ->and(json_decode($method->serialized, true)['type'])->toBe('RSA')
-        ->and(json_decode($method->serialized, true)['publicKeyMultibase'])->toStartWith('u');
+    expect($method->payload['id'])->toBe($document['verificationMethod'][0]['id'])
+        ->and($method->type)->toBe('RSA')
+        ->and($method->publicKeyMultibase)->toStartWith('u');
 });
 
-it('serves a did:web document through the resolution route', function () {
-    $didDocumentId = 'did:web:localhost:user:alice';
-
-    DidDocument::factory()->create([
-        'did_document_id' => $didDocumentId,
-        'serialized' => json_encode(['id' => $didDocumentId, '@context' => ['https://www.w3.org/ns/did/v1']]),
+it('stores the authentication members serialized', function () {
+    $document = didDocumentData(overrides: [
+        'authentication' => [
+            [
+                'id' => 'did:darauf:test#auth-1',
+                'controller' => 'did:darauf:test',
+                'type' => 'JsonWebKey2020',
+                'publicKeyJwk' => ['kty' => 'OKP', 'crv' => 'Ed25519', 'x' => 'abc'],
+            ],
+        ],
     ]);
 
-    $this->get('/api/darauf/v0.1.3/diddocument/user/alice/did.json')
-        ->assertOk()
-        ->assertJsonPath('id', $didDocumentId)
-        ->assertJsonPath('@context', ['https://www.w3.org/ns/did/v1']);
-});
+    $this->postJson(route('darauf.diddocuments.register'), $document)->assertCreated();
 
-it('returns 404 for an unknown did:web document', function () {
-    $this->get('/api/darauf/v0.1.3/diddocument/user/ghost/did.json')
-        ->assertNotFound();
+    $persisted = DidDocument::where('did_document_id', $document['id'])->first();
+
+    $this->assertDatabaseHas('darauf_authentication', [
+        'authentication_id' => $document['authentication'][0]['id'],
+    ]);
+
+    $authentication = $persisted->authentications()->first();
+
+    expect($authentication->payload['id'])->toBe($document['authentication'][0]['id'])
+        ->and($authentication->type)->toBe('JsonWebKey2020')
+        ->and($authentication->publicKeyJwk)->toBe(['kty' => 'OKP', 'crv' => 'Ed25519', 'x' => 'abc']);
 });
 
 it('rejects a duplicate did document id', function () {
@@ -107,5 +115,5 @@ it('rejects a duplicate did document id', function () {
 
     $this->postJson(route('darauf.diddocuments.register'), $document)
         ->assertUnprocessable()
-        ->assertJsonPath('message', __('darauf::messages.error.duplicated_did'));
+        ->assertJsonPath('message', __('darauf::messages.error.general'));
 });

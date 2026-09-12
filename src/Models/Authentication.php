@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Clicamal\Darauf\Models;
 
-use Clicamal\Darauf\Database\Factories\VerificationMethodFactory;
+use Clicamal\Darauf\Database\Factories\AuthenticationFactory;
 use Clicamal\Darauf\Models\Concerns\HasSerializedPayload;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * @property-read int $id
- * @property string $verification_method_id
+ * @property string $authentication_id
  * @property string $did_document_id
  * @property string $serialized
  * @property-read array<string, mixed> $payload
@@ -20,22 +20,22 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $publicKeyMultibase
  * @property array<string, mixed>|null $publicKeyJwk
  */
-class VerificationMethod extends Model
+class Authentication extends Model
 {
-    /** @use HasFactory<VerificationMethodFactory> */
+    /** @use HasFactory<AuthenticationFactory> */
     use HasFactory;
 
     use HasSerializedPayload;
 
-    protected static function newFactory(): VerificationMethodFactory
+    protected static function newFactory(): AuthenticationFactory
     {
-        return new VerificationMethodFactory;
+        return new AuthenticationFactory;
     }
 
-    protected $table = 'darauf_verification_methods';
+    protected $table = 'darauf_authentication';
 
     protected $fillable = [
-        'verification_method_id',
+        'authentication_id',
         'did_document_id',
         'serialized',
     ];

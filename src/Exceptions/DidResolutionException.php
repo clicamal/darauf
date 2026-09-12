@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace Clicamal\Darauf\Exceptions;
 
-use Exception;
-
-class DaraufException extends Exception
+class DidResolutionException extends DaraufException
 {
     public function __construct(string $message)
     {
-        parent::__construct(__($message));
+        parent::__construct((string) 'darauf::messages.error.'.$message);
     }
 }

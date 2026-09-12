@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Clicamal\Darauf;
 
+use Clicamal\Darauf\Did\DidResolverDelegator;
 use Illuminate\Support\ServiceProvider;
 
 class DaraufServiceProvider extends ServiceProvider
@@ -16,6 +17,11 @@ class DaraufServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/darauf.php', 'darauf');
 
         $this->app->singleton(Darauf::class);
+        $this->app->singleton(DidResolverDelegator::class);
+
+        foreach (config('darauf.didResolvers', []) as $name => $class) {
+            $this->app->bind("darauf.didResolvers.{$name}", $class);
+        }
 
         foreach (config('darauf.challengeManagers', []) as $name => $class) {
             foreach (explode('|', $name) as $verificationMethodType) {

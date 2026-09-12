@@ -34,7 +34,7 @@ it('allows mass assignment of its fillable fields', function () {
 
     expect($method->verification_method_id)->toBe($document->did_document_id.'#key-1')
         ->and($method->did_document_id)->toBe($document->id)
-        ->and(json_decode($method->serialized, true)['id'])->toBe($document->did_document_id.'#key-1');
+        ->and($method->payload['id'])->toBe($document->did_document_id.'#key-1');
 });
 
 it('has a unique verification method id', function () {
@@ -64,6 +64,37 @@ it('creates a coherent method through its factory', function () {
     $method = VerificationMethod::factory()->create();
 
     expect($method->verification_method_id)->toContain('#key-1')
-        ->and(json_decode($method->serialized, true)['type'])->toBe('RSA')
-        ->and(json_decode($method->serialized, true)['publicKeyMultibase'])->toStartWith('u');
+        ->and($method->payload['id'])->toBe($method->verification_method_id)
+        ->and($method->type)->toBe('RSA')
+        ->and($method->publicKeyMultibase)->toStartWith('u');
+});
+
+it('exposes the serialized payload through the concern', function () {
+    $method = new VerificationMethod([
+        'serialized' => json_encode([
+            'id' => 'did:darauf:test#key-1',
+            'type' => 'Ed25519VerificationKey2020',
+            'publicKeyMultibase' => 'z6Mk',
+            'publicKeyJwk' => ['kty' => 'OKP', 'crv' => 'Ed25519', 'x' => 'abc'],
+        ]),
+    ]);
+
+    expect($method->payload)->toBe([
+        'id' => 'did:darauf:test#key-1',
+        'type' => 'Ed25519VerificationKey2020',
+        'publicKeyMultibase' => 'z6Mk',
+        'publicKeyJwk' => ['kty' => 'OKP', 'crv' => 'Ed25519', 'x' => 'abc'],
+    ])->and($method->type)->toBe('Ed25519VerificationKey2020')
+        ->and($method->publicKeyMultibase)->toBe('z6Mk')
+        ->and($method->publicKeyJwk)->toBe(['kty' => 'OKP', 'crv' => 'Ed25519', 'x' => 'abc']);
+});
+
+it('returns null for missing serialized member fields', function () {
+    $method = new VerificationMethod([
+        'serialized' => json_encode(['id' => 'did:darauf:test#key-1']),
+    ]);
+
+    expect($method->type)->toBeNull()
+        ->and($method->publicKeyMultibase)->toBeNull()
+        ->and($method->publicKeyJwk)->toBeNull();
 });

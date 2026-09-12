@@ -18,5 +18,5 @@ it('merges the package config', function () {
 });
 
 it('loads the package translations', function () {
-    expect(trans('darauf::messages.error.verification_failed'))->toBe('Verification failed.');
+    expect(trans('darauf::messages.error.challenge_verification_failed'))->toBe('Challenge verification failed.');
 });

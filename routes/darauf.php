@@ -13,15 +13,7 @@ Route::prefix('api/darauf/v0.1.3')
     ->group(function () {
         Route::post('diddocuments', [DidDocumentController::class, 'register'])->name('darauf.diddocuments.register');
 
-        Route::post('challenge/generate/{method}', [ChallengeController::class, 'generateChallenge'])
-            ->whereAlphaNumeric('method')
-            ->name('darauf.verification.challenge.generate');
+        Route::post('challenge/generate', [ChallengeController::class, 'generate'])->name('darauf.challenge.generate');
 
-        Route::post('challenge/verify/{method}', [ChallengeController::class, 'verifyChallenge'])
-            ->whereAlphaNumeric('method')
-            ->name('darauf.verification.challenge.verify');
-
-        Route::get('{path}/did.json', [DidDocumentController::class, 'getDidWebDocument'])
-            ->where('path', '(\.well-known|diddocument(?:/.+)?)')
-            ->name('darauf.diddocuments.get');
+        Route::post('challenge/verify', [ChallengeController::class, 'verify'])->name('darauf.challenge.verify');
     });
